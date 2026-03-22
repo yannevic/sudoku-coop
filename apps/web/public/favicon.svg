@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <line x1="181" y1="60" x2="181" y2="452" stroke="#9b5fa5" stroke-width="21" stroke-linecap="round"/>
+  <line x1="331" y1="60" x2="331" y2="452" stroke="#9b5fa5" stroke-width="21" stroke-linecap="round"/>
+  <line x1="60" y1="181" x2="452" y2="181" stroke="#9b5fa5" stroke-width="21" stroke-linecap="round"/>
+  <line x1="60" y1="331" x2="452" y2="331" stroke="#9b5fa5" stroke-width="21" stroke-linecap="round"/>
+  <text x="120" y="123" font-family="monospace" font-size="82" font-weight="700" fill="#9b5fa5" text-anchor="middle" dominant-baseline="central">9</text>
+  <text x="392" y="123" font-family="monospace" font-size="82" font-weight="700" fill="#9b5fa5" text-anchor="middle" dominant-baseline="central">3</text>
+  <text x="120" y="392" font-family="monospace" font-size="82" font-weight="700" fill="#9b5fa5" text-anchor="middle" dominant-baseline="central">7</text>
+  <text x="392" y="392" font-family="monospace" font-size="82" font-weight="700" fill="#9b5fa5" text-anchor="middle" dominant-baseline="central">1</text>
+  <path d="M256 196 C238 176 214 184 214 204 C214 228 256 246 256 246 C256 246 298 228 298 204 C298 184 274 176 256 196Z" fill="#f37eb9" opacity="0.9" transform="rotate(0 256 256)"/>
+  <path d="M256 196 C238 176 214 184 214 204 C214 228 256 246 256 246 C256 246 298 228 298 204 C298 184 274 176 256 196Z" fill="#f37eb9" opacity="0.9" transform="rotate(72 256 256)"/>
+  <path d="M256 196 C238 176 214 184 214 204 C214 228 256 246 256 246 C256 246 298 228 298 204 C298 184 274 176 256 196Z" fill="#f37eb9" opacity="0.9" transform="rotate(144 256 256)"/>
+  <path d="M256 196 C238 176 214 184 214 204 C214 228 256 246 256 246 C256 246 298 228 298 204 C298 184 274 176 256 196Z" fill="#f37eb9" opacity="0.9" transform="rotate(216 256 256)"/>
+  <path d="M256 196 C238 176 214 184 214 204 C214 228 256 246 256 246 C256 246 298 228 298 204 C298 184 274 176 256 196Z" fill="#f37eb9" opacity="0.9" transform="rotate(288 256 256)"/>
+  <circle cx="256" cy="256" r="17" fill="#fce4f3" stroke="#f37eb9" stroke-width="4"/>
+  <circle cx="256" cy="256" r="8" fill="#f37eb9"/>
+  <circle cx="256" cy="240" r="3" fill="#9b5fa5"/>
+  <circle cx="269" cy="248" r="3" fill="#9b5fa5"/>
+  <circle cx="264" cy="263" r="3" fill="#9b5fa5"/>
+  <circle cx="248" cy="263" r="3" fill="#9b5fa5"/>
+  <circle cx="243" cy="248" r="3" fill="#9b5fa5"/>
+</svg>

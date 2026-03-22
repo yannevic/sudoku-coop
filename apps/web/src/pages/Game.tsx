@@ -1,20 +1,35 @@
 import { Copy, Check } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SudokuBoard from '../components/SudokuBoard';
+import ChatWindow from '../components/ChatWindow';
 import { useRoomContext } from '../context/RoomContext';
+import useChat from '../hooks/useChat';
 import type { CurrentBoard, Notes } from '../utils/sudoku';
 
 export default function Game() {
   const navigate = useNavigate();
-  const { roomId, roomState, updateRoom, setRoomState, leaveRoom } = useRoomContext();
+  const { roomId, roomState, playerName, updateRoom, setRoomState, leaveRoom } = useRoomContext();
   const [selected, setSelected] = useState<[number, number] | null>(null);
   const [isNoteMode, setIsNoteMode] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const player = roomState?.player ?? null;
+  const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
+    useChat(roomId, player, playerName);
+
+  const hasAnnouncedRef = useRef(false);
+
   useEffect(() => {
     if (!roomId) navigate('/');
   }, [roomId, navigate]);
+
+  // Anuncia entrada na sala uma única vez via broadcast (todos recebem, inclusive o creator)
+  useEffect(() => {
+    if (!roomState || hasAnnouncedRef.current) return;
+    hasAnnouncedRef.current = true;
+    announceJoin();
+  }, [roomState, announceJoin]);
 
   const handleSelect = (row: number, col: number) => {
     setSelected([row, col]);
@@ -79,11 +94,24 @@ export default function Game() {
 
   if (!roomState) return null;
 
+  const displayName = playerName.trim() || 'Anônimo';
+
   return (
     <div className="min-h-screen bg-[#fce4f3] flex flex-col items-center justify-center gap-6 p-4">
       <h1 className="text-3xl font-bold text-[#f37eb9]">Sudoku Coop 🌸</h1>
 
-      <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2 shadow-sm">
+      <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-sm">
+        <span className="text-gray-500 text-sm">
+          Jogando como{' '}
+          <span
+            className={`font-bold ${
+              roomState.player === 'creator' ? 'text-[#f37eb9]' : 'text-[#22a5e0]'
+            }`}
+          >
+            {displayName}
+          </span>
+        </span>
+        <div className="w-px h-4 bg-[#e9b8d9]" />
         <span className="text-gray-600 text-sm font-semibold">Sala:</span>
         <span className="text-[#9b5fa5] font-bold tracking-widest text-lg">{roomId}</span>
         <button
@@ -127,6 +155,7 @@ export default function Game() {
         <button
           type="button"
           onClick={() => {
+            sendSystemMessage(`👋 ${displayName} saiu da sala.`);
             leaveRoom();
             navigate('/');
           }}
@@ -135,6 +164,14 @@ export default function Game() {
           Sair da sala
         </button>
       </div>
+
+      <ChatWindow
+        messages={messages}
+        unreadCount={unreadCount}
+        player={roomState.player}
+        onSend={sendMessage}
+        onOpenChange={setIsOpen}
+      />
     </div>
   );
 }

@@ -23,12 +23,14 @@ interface RoomState {
 interface RoomContextType {
   roomId: string | null;
   roomState: RoomState | null;
+  playerName: string;
   loading: boolean;
   error: string | null;
   createRoom: (difficulty: Difficulty) => Promise<void>;
   joinRoom: (code: string) => Promise<void>;
   updateRoom: (current: CurrentBoard, notes: Notes) => Promise<void>;
   setRoomState: (state: RoomState) => void;
+  setPlayerName: (name: string) => void;
   leaveRoom: () => void;
 }
 
@@ -41,6 +43,7 @@ function generateRoomCode(): string {
 export function RoomProvider({ children }: { children: ReactNode }) {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
+  const [playerName, setPlayerName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -159,15 +162,17 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     () => ({
       roomId,
       roomState,
+      playerName,
       loading,
       error,
       createRoom,
       joinRoom,
       updateRoom,
       setRoomState,
+      setPlayerName,
       leaveRoom,
     }),
-    [roomId, roomState, loading, error, createRoom, joinRoom, updateRoom, setRoomState, leaveRoom]
+    [roomId, roomState, playerName, loading, error, createRoom, joinRoom, updateRoom, leaveRoom]
   );
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

@@ -1,0 +1,142 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import supabase from '../utils/supabase';
+import type { Player } from '../utils/sudoku';
+import type { ChatMessage } from '../types/chat';
+
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 10);
+}
+
+export default function useChat(roomId: string | null, player: Player | null, playerName: string) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const isOpenRef = useRef(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const playSound = useCallback(() => {
+    const ctx = new AudioContext();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+
+    oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.08);
+
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.18);
+  }, []);
+
+  const addMessage = useCallback(
+    (msg: ChatMessage, fromSelf: boolean) => {
+      setMessages((prev) => [...prev, msg]);
+      if (!fromSelf) {
+        playSound();
+        if (!isOpenRef.current) {
+          setUnreadCount((prev) => prev + 1);
+        }
+      }
+    },
+    [playSound]
+  );
+
+  const sendMessage = useCallback(
+    (text: string) => {
+      if (!roomId || !player || !text.trim()) return;
+
+      const msg: ChatMessage = {
+        id: generateId(),
+        text: text.trim(),
+        player,
+        playerName: playerName || 'Anônimo',
+        type: 'user',
+        timestamp: Date.now(),
+      };
+
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'chat',
+        payload: msg,
+      });
+
+      addMessage(msg, true);
+    },
+    [roomId, player, playerName, addMessage]
+  );
+
+  const sendSystemMessage = useCallback(
+    (text: string) => {
+      if (!roomId) return;
+
+      const msg: ChatMessage = {
+        id: generateId(),
+        text,
+        player: 'system',
+        playerName: 'Sistema',
+        type: 'system',
+        timestamp: Date.now(),
+      };
+
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'chat',
+        payload: msg,
+      });
+
+      addMessage(msg, true);
+    },
+    [roomId, addMessage]
+  );
+
+  const announceJoin = useCallback(() => {
+    if (!roomId || !player) return;
+
+    const name = playerName || 'Anônimo';
+
+    const msg: ChatMessage = {
+      id: generateId(),
+      text: `🎮 ${name} entrou na sala!`,
+      player: 'system',
+      playerName: 'Sistema',
+      type: 'system',
+      timestamp: Date.now(),
+    };
+
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'chat',
+      payload: msg,
+    });
+
+    addMessage(msg, true);
+  }, [roomId, player, playerName, addMessage]);
+
+  const setIsOpen = useCallback((open: boolean) => {
+    isOpenRef.current = open;
+    if (open) setUnreadCount(0);
+  }, []);
+
+  useEffect(() => {
+    if (!roomId) return undefined;
+
+    const channel = supabase
+      .channel(`room-${roomId}-chat`)
+      .on('broadcast', { event: 'chat' }, ({ payload }: { payload: ChatMessage }) => {
+        addMessage(payload, false);
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [roomId, addMessage]);
+
+  return { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen };
+}

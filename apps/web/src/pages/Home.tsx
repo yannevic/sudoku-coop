@@ -65,9 +65,9 @@ export default function Home() {
         <div className="flex flex-col gap-2">
           <input
             type="text"
-            placeholder="Código da sala (ex: XKQP)"
+            placeholder="Código da sala"
             value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
             maxLength={4}
             className="w-full px-4 py-3 border border-[#e9b8d9] rounded-xl text-center text-lg font-bold tracking-widest text-[#9b5fa5] focus:outline-none focus:border-[#f37eb9]"
           />

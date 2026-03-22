@@ -1,3 +1,4 @@
+import { Copy, Check } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SudokuBoard from '../components/SudokuBoard';
@@ -9,6 +10,7 @@ export default function Game() {
   const { roomId, roomState, updateRoom, setRoomState, leaveRoom } = useRoomContext();
   const [selected, setSelected] = useState<[number, number] | null>(null);
   const [isNoteMode, setIsNoteMode] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!roomId) navigate('/');
@@ -77,8 +79,21 @@ export default function Game() {
     <div className="min-h-screen bg-[#fce4f3] flex flex-col items-center justify-center gap-6 p-4">
       <h1 className="text-3xl font-bold text-[#f37eb9]">Sudoku Coop 🌸</h1>
 
-      <div className="bg-white rounded-xl px-4 py-2 text-[#9b5fa5] font-bold tracking-widest text-lg shadow-sm">
-        Sala: {roomId}
+      <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2 shadow-sm">
+        <span className="text-gray-600 text-sm font-semibold">Sala:</span>
+        <span className="text-[#9b5fa5] font-bold tracking-widest text-lg">{roomId}</span>
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard.writeText(roomId ?? '');
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+          className="text-gray-400 hover:text-[#9b5fa5] transition-colors ml-1"
+          title="Copiar código"
+        >
+          {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+        </button>
       </div>
 
       <SudokuBoard

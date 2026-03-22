@@ -1,10 +1,11 @@
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Timer, Play } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SudokuBoard from '../components/SudokuBoard';
 import ChatWindow from '../components/ChatWindow';
 import { useRoomContext } from '../context/RoomContext';
 import useChat from '../hooks/useChat';
+import useTimer from '../hooks/useTimer';
 import type { CurrentBoard, Notes } from '../utils/sudoku';
 
 export default function Game() {
@@ -15,8 +16,12 @@ export default function Game() {
   const [copied, setCopied] = useState(false);
 
   const player = roomState?.player ?? null;
+  const playerCount = roomState?.playerCount ?? 1;
+
   const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
     useChat(roomId, player, playerName);
+
+  const { formatted, isRunning, unlockedSolo, unlockSolo } = useTimer(playerCount >= 2);
 
   const hasAnnouncedRef = useRef(false);
 
@@ -24,7 +29,6 @@ export default function Game() {
     if (!roomId) navigate('/');
   }, [roomId, navigate]);
 
-  // Anuncia entrada na sala uma única vez via broadcast (todos recebem, inclusive o creator)
   useEffect(() => {
     if (!roomState || hasAnnouncedRef.current) return;
     hasAnnouncedRef.current = true;
@@ -95,12 +99,14 @@ export default function Game() {
   if (!roomState) return null;
 
   const displayName = playerName.trim() || 'Anônimo';
+  const waitingForPlayer = playerCount < 2 && !unlockedSolo;
 
   return (
     <div className="min-h-screen bg-[#fce4f3] flex flex-col items-center justify-center gap-6 p-4">
       <h1 className="text-3xl font-bold text-[#f37eb9]">Sudoku Coop 🌸</h1>
 
-      <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-sm">
+      {/* Barra superior */}
+      <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-sm flex-wrap justify-center">
         <span className="text-gray-500 text-sm">
           Jogando como{' '}
           <span
@@ -121,11 +127,44 @@ export default function Game() {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
           }}
-          className="text-gray-400 hover:text-[#9b5fa5] transition-colors ml-1"
+          className="text-gray-400 hover:text-[#9b5fa5] transition-colors"
           title="Copiar código"
         >
           {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
         </button>
+      </div>
+
+      {/* Timer */}
+      <div className="flex flex-col items-center gap-1">
+        <div
+          className={`flex items-center gap-2 px-5 py-2 rounded-2xl shadow-sm transition-colors ${
+            isRunning ? 'bg-white' : 'bg-white border border-dashed border-[#e9b8d9]'
+          }`}
+        >
+          <Timer size={16} className={isRunning ? 'text-[#f37eb9]' : 'text-[#d4a8c7]'} />
+          <span
+            className={`font-mono text-2xl font-bold tracking-widest transition-colors ${
+              isRunning ? 'text-[#9b5fa5]' : 'text-[#d4a8c7]'
+            }`}
+          >
+            {formatted}
+          </span>
+        </div>
+
+        {waitingForPlayer && (
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[11px] text-[#c9a0d0]">⏸️ Aguardando segundo jogador...</span>
+            <button
+              type="button"
+              onClick={unlockSolo}
+              className="flex items-center gap-1 text-[11px] text-[#9b5fa5] hover:text-[#7a4a84] font-medium transition-colors underline underline-offset-2"
+              title="Jogar sozinho e contar o tempo"
+            >
+              <Play size={10} />
+              jogar sozinho
+            </button>
+          </div>
+        )}
       </div>
 
       <SudokuBoard

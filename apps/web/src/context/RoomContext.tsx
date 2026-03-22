@@ -18,6 +18,7 @@ interface RoomState {
   notes: Notes;
   difficulty: Difficulty;
   player: Player;
+  playerCount: number;
 }
 
 interface RoomContextType {
@@ -73,7 +74,15 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     }
 
     setRoomId(id);
-    setRoomState({ puzzle, solution, current, notes, difficulty, player: 'creator' });
+    setRoomState({
+      puzzle,
+      solution,
+      current,
+      notes,
+      difficulty,
+      player: 'creator',
+      playerCount: 1,
+    });
     setLoading(false);
   }, []);
 
@@ -107,6 +116,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       notes,
       difficulty: data.difficulty,
       player: 'joiner',
+      playerCount: 2,
     });
     setLoading(false);
   }, []);
@@ -147,7 +157,12 @@ export function RoomProvider({ children }: { children: ReactNode }) {
           );
           setRoomState((prev) => {
             if (!prev) return null;
-            return { ...prev, current: data.current, notes: updatedNotes };
+            return {
+              ...prev,
+              current: data.current,
+              notes: updatedNotes,
+              playerCount: data.player_count,
+            };
           });
         }
       )

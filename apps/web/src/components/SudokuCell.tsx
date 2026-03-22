@@ -7,6 +7,7 @@ interface SudokuCellProps {
   isFixed: boolean;
   isSelected: boolean;
   isHighlighted: boolean;
+  isSameNumber: boolean;
   isError: boolean;
   isNoteMode: boolean;
   row: number;
@@ -21,6 +22,7 @@ export default function SudokuCell({
   isFixed,
   isSelected,
   isHighlighted,
+  isSameNumber,
   isError,
   isNoteMode,
   row,
@@ -33,6 +35,7 @@ export default function SudokuCell({
   const getBg = () => {
     if (isSelected) return isNoteMode ? 'bg-[#f0b8d9]' : 'bg-[#f37eb9]';
     if (isError) return 'bg-red-200';
+    if (isSameNumber) return 'bg-[#bae6fd]';
     if (isHighlighted) return 'bg-[#fce4f3]';
     return 'bg-white';
   };

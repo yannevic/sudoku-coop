@@ -41,6 +41,19 @@ export default function SudokuBoard({
     return current[row][col]?.value ?? null;
   };
 
+  const getSelectedValue = () => {
+    if (!selected) return null;
+    const [sr, sc] = selected;
+    return getValue(sr, sc);
+  };
+
+  const isSameNumber = (row: number, col: number) => {
+    const selectedValue = getSelectedValue();
+    if (selectedValue === null) return false;
+    if (selected?.[0] === row && selected?.[1] === col) return false;
+    return getValue(row, col) === selectedValue;
+  };
+
   return (
     <div className="inline-grid grid-cols-9 border-2 border-[#9b5fa5]">
       {current.flatMap((row, r) =>
@@ -53,6 +66,7 @@ export default function SudokuBoard({
             isFixed={puzzle[r][c] !== null}
             isSelected={selected?.[0] === r && selected?.[1] === c}
             isHighlighted={isHighlighted(r, c)}
+            isSameNumber={isSameNumber(r, c)}
             isError={isError(r, c)}
             isNoteMode={isNoteMode}
             row={r}

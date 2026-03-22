@@ -3,7 +3,391 @@ import { MessageCircle, X, Minus, Send } from 'lucide-react';
 import type { ChatMessage } from '../types/chat';
 import type { Player } from '../utils/sudoku';
 
-const EMOJIS = ['😄', '😍', '🎉', '👏', '🔥', '💡', '😱', '🤔', '💪', '🌸'];
+const EMOJI_CATEGORIES = [
+  {
+    label: '😄',
+    title: 'Rostos',
+    emojis: [
+      '😀',
+      '😃',
+      '😄',
+      '😁',
+      '😆',
+      '😅',
+      '🤣',
+      '😂',
+      '🙂',
+      '🙃',
+      '😉',
+      '😊',
+      '😇',
+      '🥰',
+      '😍',
+      '🤩',
+      '😘',
+      '😚',
+      '😙',
+      '😋',
+      '😛',
+      '😜',
+      '🤪',
+      '😝',
+      '🤑',
+      '🤗',
+      '🤔',
+      '🤐',
+      '🥴',
+      '😐',
+      '😑',
+      '😏',
+      '😒',
+      '🙄',
+      '😬',
+      '😌',
+      '😔',
+      '😪',
+      '😴',
+      '😷',
+      '🤒',
+      '🤕',
+      '🤢',
+      '🤧',
+      '🥵',
+      '🥶',
+      '🥳',
+      '🤠',
+      '😎',
+      '🤓',
+      '🧐',
+      '😕',
+      '🙁',
+      '😮',
+      '😯',
+      '😲',
+      '😳',
+      '🥺',
+      '😦',
+      '😧',
+      '😨',
+      '😰',
+      '😥',
+      '😢',
+      '😭',
+      '😱',
+      '😖',
+      '😣',
+      '😞',
+      '😓',
+      '😩',
+      '😫',
+      '🥱',
+      '😤',
+      '😡',
+      '😠',
+      '🤬',
+      '😈',
+    ],
+  },
+  {
+    label: '👋',
+    title: 'Gestos',
+    emojis: [
+      '👋',
+      '🤚',
+      '✋',
+      '👌',
+      '✌️',
+      '🤞',
+      '👍',
+      '👎',
+      '✊',
+      '👊',
+      '👏',
+      '🙌',
+      '🤝',
+      '🙏',
+      '💪',
+      '👀',
+      '👅',
+      '👄',
+      '💅',
+      '☝️',
+      '👆',
+      '👇',
+      '👈',
+      '👉',
+      '🤙',
+      '👋',
+    ],
+  },
+  {
+    label: '❤️',
+    title: 'Corações',
+    emojis: [
+      '❤️',
+      '🧡',
+      '💛',
+      '💚',
+      '💙',
+      '💜',
+      '🖤',
+      '🤍',
+      '🤎',
+      '💔',
+      '❣️',
+      '💕',
+      '💞',
+      '💓',
+      '💗',
+      '💖',
+      '💘',
+      '💝',
+      '💟',
+      '✨',
+      '⭐',
+      '🌟',
+      '💫',
+      '🔥',
+      '💥',
+      '🎵',
+      '🎶',
+      '💯',
+      '🆒',
+      '🆙',
+      '🆕',
+      '🆓',
+      '🔝',
+    ],
+  },
+  {
+    label: '🎉',
+    title: 'Celebração',
+    emojis: [
+      '🎉',
+      '🎊',
+      '🎈',
+      '🎁',
+      '🎀',
+      '🏆',
+      '🥇',
+      '🥈',
+      '🥉',
+      '🏅',
+      '🎖️',
+      '🎯',
+      '🎲',
+      '🎮',
+      '🕹️',
+      '🎰',
+      '🧩',
+      '🎭',
+      '🎨',
+      '🎬',
+      '🎤',
+      '🎧',
+      '🎼',
+      '🎹',
+      '🥁',
+      '🎷',
+      '🎺',
+      '🎸',
+      '🎻',
+    ],
+  },
+  {
+    label: '🐶',
+    title: 'Animais',
+    emojis: [
+      '🐶',
+      '🐱',
+      '🐭',
+      '🐹',
+      '🐰',
+      '🦊',
+      '🐻',
+      '🐼',
+      '🐨',
+      '🐯',
+      '🦁',
+      '🐮',
+      '🐷',
+      '🐸',
+      '🐵',
+      '🙈',
+      '🙉',
+      '🙊',
+      '🐔',
+      '🐧',
+      '🐦',
+      '🦆',
+      '🦅',
+      '🦉',
+      '🐺',
+      '🐗',
+      '🐴',
+      '🦄',
+      '🐝',
+      '🦋',
+      '🐌',
+      '🐞',
+      '🐜',
+      '🐢',
+      '🐍',
+      '🐙',
+      '🦑',
+      '🐡',
+      '🐠',
+      '🐟',
+      '🐬',
+      '🐳',
+      '🐋',
+      '🦈',
+      '🐊',
+      '🦓',
+      '🦒',
+      '🐘',
+      '🐪',
+      '🐫',
+      '🦔',
+      '🐇',
+      '🦝',
+      '🦦',
+      '🦥',
+      '🐁',
+      '🐀',
+      '🐿️',
+    ],
+  },
+  {
+    label: '🍕',
+    title: 'Comida',
+    emojis: [
+      '🍕',
+      '🍔',
+      '🍟',
+      '🌭',
+      '🌮',
+      '🌯',
+      '🥙',
+      '🥚',
+      '🍳',
+      '🥘',
+      '🍲',
+      '🥗',
+      '🍿',
+      '🍱',
+      '🍣',
+      '🍤',
+      '🍜',
+      '🍝',
+      '🍛',
+      '🍚',
+      '🍙',
+      '🍘',
+      '🍡',
+      '🥟',
+      '🦀',
+      '🦐',
+      '🍦',
+      '🍧',
+      '🍨',
+      '🍩',
+      '🍪',
+      '🎂',
+      '🍰',
+      '🧁',
+      '🍫',
+      '🍬',
+      '🍭',
+      '🍮',
+      '🍯',
+      '🥛',
+      '☕',
+      '🍵',
+      '🥤',
+      '🍺',
+      '🍻',
+      '🥂',
+      '🍷',
+      '🍸',
+      '🍹',
+      '🍾',
+    ],
+  },
+  {
+    label: '⚽',
+    title: 'Esportes',
+    emojis: [
+      '⚽',
+      '🏀',
+      '🏈',
+      '⚾',
+      '🎾',
+      '🏐',
+      '🏉',
+      '🎱',
+      '🏓',
+      '🏸',
+      '🥅',
+      '⛳',
+      '🎣',
+      '🎽',
+      '🎿',
+      '🛷',
+      '🎯',
+      '🏋️',
+      '🤸',
+      '🏄',
+      '🚣',
+      '🧘',
+      '🛹',
+      '🚴',
+      '🏊',
+      '🏆',
+      '🥇',
+      '🥈',
+      '🥉',
+    ],
+  },
+  {
+    label: '🌸',
+    title: 'Natureza',
+    emojis: [
+      '🌸',
+      '🌺',
+      '🌻',
+      '🌹',
+      '🌷',
+      '🌼',
+      '💐',
+      '🍀',
+      '🌿',
+      '🌱',
+      '🌲',
+      '🌳',
+      '🌴',
+      '🌵',
+      '🍃',
+      '🍂',
+      '🍁',
+      '🍄',
+      '🌾',
+      '💧',
+      '🌊',
+      '🌈',
+      '⚡',
+      '🔥',
+      '❄️',
+      '☃️',
+      '⛄',
+      '🌙',
+      '☀️',
+      '⭐',
+      '🌟',
+      '✨',
+    ],
+  },
+];
 
 interface ChatWindowProps {
   messages: ChatMessage[];
@@ -50,9 +434,10 @@ export default function ChatWindow({
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState('');
   const [showEmojis, setShowEmojis] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(0);
   const [pos, setPos] = useState(() => ({
     x: window.innerWidth - 344,
-    y: window.innerHeight - 420,
+    y: window.innerHeight - 520,
   }));
 
   const dragging = useRef(false);
@@ -110,7 +495,6 @@ export default function ChatWindow({
     if (!input.trim()) return;
     onSend(input);
     setInput('');
-    setShowEmojis(false);
   }, [input, onSend]);
 
   const handleKeyPress = useCallback(
@@ -120,13 +504,10 @@ export default function ChatWindow({
     [handleSend]
   );
 
-  const handleEmojiClick = useCallback(
-    (emoji: string) => {
-      onSend(emoji);
-      setShowEmojis(false);
-    },
-    [onSend]
-  );
+  const handleEmojiClick = useCallback((emoji: string) => {
+    setInput((prev) => prev + emoji);
+    inputRef.current?.focus();
+  }, []);
 
   if (!isOpen) {
     return (
@@ -139,7 +520,7 @@ export default function ChatWindow({
       >
         <MessageCircle size={26} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-[#f37eb9] text-white text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1 shadow">
+          <span className="absolute -top-1 -right-1 bg-[#f37eb9] text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 shadow">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -185,7 +566,7 @@ export default function ChatWindow({
       {!isMinimized && (
         <>
           {/* Mensagens */}
-          <div className="flex flex-col gap-2 p-3 h-64 overflow-y-auto bg-[#fdf6fb]">
+          <div className="flex flex-col gap-2 p-3 h-80 overflow-y-auto bg-[#fdf6fb]">
             {messages.length === 0 && (
               <p className="text-center text-[#c9a0d0] text-xs mt-8">Nenhuma mensagem ainda 🌸</p>
             )}
@@ -206,28 +587,46 @@ export default function ChatWindow({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Picker de emojis */}
-          {showEmojis && (
-            <div className="flex flex-wrap gap-1 px-3 py-2 border-t border-[#f0d6eb] bg-white">
-              {EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => handleEmojiClick(emoji)}
-                  className="text-xl hover:scale-125 transition-transform"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Input */}
-          <div className="flex items-center gap-2 px-3 py-2 border-t border-[#f0d6eb] bg-white">
+          <div className="relative flex items-center gap-2 px-3 py-2 border-t border-[#f0d6eb] bg-white">
+            {/* Picker flutuando por cima, abaixo do botão de emoji */}
+            {showEmojis && (
+              <div className="absolute bottom-full left-0 right-0 bg-white border border-[#e9b8d9] rounded-t-2xl shadow-xl z-10 overflow-hidden">
+                <div className="flex overflow-x-auto border-b border-[#f0d6eb] px-1 pt-1 gap-0.5">
+                  {EMOJI_CATEGORIES.map((cat, i) => (
+                    <button
+                      key={cat.title}
+                      type="button"
+                      onClick={() => setActiveCategory(i)}
+                      title={cat.title}
+                      className={`flex-shrink-0 text-base px-2 py-1 rounded-t transition-colors ${
+                        activeCategory === i
+                          ? 'bg-[#fce4f3] border-b-2 border-[#f37eb9]'
+                          : 'hover:bg-[#fdf6fb]'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-8 gap-0.5 p-2 h-36 overflow-y-auto">
+                  {EMOJI_CATEGORIES[activeCategory].emojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleEmojiClick(emoji)}
+                      className="text-xl hover:scale-125 transition-transform flex items-center justify-center h-8 w-8 rounded hover:bg-[#fce4f3]"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setShowEmojis((prev) => !prev)}
-              className={`text-xl transition-transform hover:scale-110 ${showEmojis ? 'opacity-100' : 'opacity-60'}`}
+              className={`text-xl transition-transform hover:scale-110 flex-shrink-0 ${showEmojis ? 'opacity-100' : 'opacity-60'}`}
               title="Emojis"
             >
               😄
@@ -246,7 +645,7 @@ export default function ChatWindow({
               type="button"
               onClick={handleSend}
               disabled={!input.trim()}
-              className="bg-[#9b5fa5] hover:bg-[#7a4a84] disabled:opacity-40 text-white rounded-xl p-1.5 transition-colors"
+              className="bg-[#9b5fa5] hover:bg-[#7a4a84] disabled:opacity-40 text-white rounded-xl p-1.5 transition-colors flex-shrink-0"
               title="Enviar"
             >
               <Send size={15} />

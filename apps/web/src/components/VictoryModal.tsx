@@ -1,5 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { Trophy } from 'lucide-react';
 import { saveToLeaderboard, formatDuoName, formatTime } from '../utils/leaderboard';
 import type { Difficulty } from '../utils/sudoku';
@@ -9,7 +8,8 @@ interface VictoryModalProps {
   difficulty: Difficulty;
   creatorName: string;
   joinerName: string;
-  onPlayAgain: () => void;
+  isCreator: boolean;
+  onLeave: () => void;
   onShowLeaderboard: () => void;
 }
 
@@ -44,19 +44,19 @@ export default function VictoryModal({
   difficulty,
   creatorName,
   joinerName,
-  onPlayAgain,
+  isCreator,
+  onLeave,
   onShowLeaderboard,
 }: VictoryModalProps) {
-  const navigate = useNavigate();
-  const [saved, setSaved] = useState(false);
+  const savedRef = useRef(false);
   const particles = useRef(generateParticles()).current;
-  const duoName = formatDuoName(creatorName, joinerName, new Date());
+  const duoName = useRef(formatDuoName(creatorName, joinerName, new Date())).current;
 
   useEffect(() => {
-    if (saved) return;
-    setSaved(true);
+    if (!isCreator || savedRef.current) return;
+    savedRef.current = true;
     saveToLeaderboard(duoName, timeSeconds, difficulty);
-  }, [duoName, timeSeconds, difficulty, saved]);
+  }, [duoName, timeSeconds, difficulty, isCreator]);
 
   const difficultyLabel: Record<Difficulty, string> = {
     easy: 'Fácil',
@@ -146,15 +146,7 @@ export default function VictoryModal({
 
           <button
             type="button"
-            onClick={onPlayAgain}
-            className="w-full py-2.5 bg-[#f37eb9] text-white font-semibold rounded-xl hover:bg-[#e06aa5] transition-colors"
-          >
-            🎮 Jogar novamente
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/')}
+            onClick={onLeave}
             className="w-full py-2.5 bg-white text-[#9b5fa5] font-semibold rounded-xl border border-[#e9b8d9] hover:bg-[#fdf6fb] transition-colors"
           >
             Voltar ao início

@@ -6,6 +6,7 @@ import type { Difficulty } from '../utils/sudoku';
 
 interface LeaderboardModalProps {
   onClose: () => void;
+  onBack?: () => void;
   initialDifficulty?: Difficulty;
 }
 
@@ -24,6 +25,7 @@ function getMedal(index: number): string {
 
 export default function LeaderboardModal({
   onClose,
+  onBack,
   initialDifficulty = 'medium',
 }: LeaderboardModalProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
@@ -47,6 +49,16 @@ export default function LeaderboardModal({
         {/* Header */}
         <div className="bg-[#9b5fa5] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="text-white opacity-70 hover:opacity-100 transition-opacity mr-1"
+                title="Voltar"
+              >
+                ←
+              </button>
+            )}
             <Trophy size={20} className="text-yellow-300" />
             <span className="text-white font-bold text-lg">Ranking de Duplas</span>
           </div>

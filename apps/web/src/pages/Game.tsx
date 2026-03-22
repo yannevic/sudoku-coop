@@ -10,9 +10,16 @@ import useChat from '../hooks/useChat';
 import useTimer from '../hooks/useTimer';
 import type { CurrentBoard, Notes } from '../utils/sudoku';
 
-function isBoardComplete(current: CurrentBoard, solution: (number | null)[][]): boolean {
+function isBoardComplete(
+  current: CurrentBoard,
+  solution: (number | null)[][],
+  puzzle: (number | null)[][]
+): boolean {
   return current.every((row, r) =>
-    row.every((cell, c) => cell !== null && cell.value === solution[r][c])
+    row.every((cell, c) => {
+      if (puzzle[r][c] !== null) return true;
+      return cell !== null && cell.value === solution[r][c];
+    })
   );
 }
 
@@ -30,12 +37,15 @@ export default function Game() {
   const playerCount = roomState?.playerCount ?? 1;
 
   const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
-    useChat(roomId, player, playerName);
+    useChat(roomId, player, playerName, (name) => setJoinerName(name));
 
-  const { seconds, formatted, isRunning, unlockedSolo, unlockSolo } = useTimer(playerCount >= 2);
+  const { seconds, formatted, isRunning, unlockedSolo, unlockSolo } = useTimer(
+    playerCount >= 2,
+    showVictory
+  );
 
   const hasAnnouncedRef = useRef(false);
-  const victoryCheckedRef = useRef(false);
+  const showVictoryRef = useRef(false);
 
   useEffect(() => {
     if (!roomId) navigate('/');
@@ -47,24 +57,14 @@ export default function Game() {
     announceJoin();
   }, [roomState, announceJoin]);
 
-  // Detecta nome do joiner via mensagens de sistema
+  // Detecta vitória — usa ref pra evitar duplo disparo sem depender de showVictory
   useEffect(() => {
-    messages.forEach((msg) => {
-      if (msg.type === 'system' && msg.text.includes('entrou na sala') && player === 'creator') {
-        const match = msg.text.match(/🎮 (.+) entrou na sala!/);
-        if (match) setJoinerName(match[1]);
-      }
-    });
-  }, [messages, player]);
-
-  // Detecta vitória
-  useEffect(() => {
-    if (!roomState || showVictory || victoryCheckedRef.current) return;
-    if (isBoardComplete(roomState.current, roomState.solution)) {
-      victoryCheckedRef.current = true;
+    if (!roomState || showVictoryRef.current) return;
+    if (isBoardComplete(roomState.current, roomState.solution, roomState.puzzle)) {
+      showVictoryRef.current = true;
       setShowVictory(true);
     }
-  }, [roomState, showVictory]);
+  }, [roomState]);
 
   const handleSelect = (row: number, col: number) => {
     setSelected([row, col]);
@@ -132,14 +132,19 @@ export default function Game() {
   const displayName = playerName.trim() || 'Anônimo';
   const waitingForPlayer = playerCount < 2 && !unlockedSolo;
 
-  const creatorName = player === 'creator' ? displayName : joinerName;
-  const joinerDisplayName = player === 'joiner' ? displayName : joinerName;
+  const creatorName = player === 'creator' ? displayName : joinerName || 'Anônimo';
+  const joinerDisplayName = player === 'joiner' ? displayName : joinerName || 'Anônimo';
 
-  const handlePlayAgain = () => {
+  const resetAndLeave = () => {
     setShowVictory(false);
+    setShowLeaderboard(false);
+    showVictoryRef.current = false;
+    hasAnnouncedRef.current = false;
     leaveRoom();
     navigate('/');
   };
+
+  const handleLeave = resetAndLeave;
 
   return (
     <div className="min-h-screen bg-[#fce4f3] flex flex-col items-center justify-center gap-6 p-4">
@@ -216,7 +221,25 @@ export default function Game() {
         onSelect={handleSelect}
       />
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap justify-center">
+        {import.meta.env.DEV && (
+          <button
+            type="button"
+            onClick={() => {
+              const completedCurrent: CurrentBoard = roomState.solution.map((row, r) =>
+                row.map((cell, c) => {
+                  if (roomState.puzzle[r][c] !== null) return null;
+                  return { value: cell as number, player: roomState.player };
+                })
+              );
+              setRoomState({ ...roomState, current: completedCurrent });
+              updateRoom(completedCurrent, roomState.notes);
+            }}
+            className="px-4 py-2 rounded text-sm font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 hover:bg-yellow-200 transition-colors"
+          >
+            🧪 Completar tabuleiro
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setIsNoteMode((prev) => !prev)}
@@ -257,7 +280,8 @@ export default function Game() {
           difficulty={roomState.difficulty}
           creatorName={creatorName}
           joinerName={joinerDisplayName}
-          onPlayAgain={handlePlayAgain}
+          isCreator={player === 'creator'}
+          onLeave={handleLeave}
           onShowLeaderboard={() => {
             setShowVictory(false);
             setShowLeaderboard(true);
@@ -268,7 +292,11 @@ export default function Game() {
       {showLeaderboard && (
         <LeaderboardModal
           initialDifficulty={roomState.difficulty}
-          onClose={() => setShowLeaderboard(false)}
+          onClose={handleLeave}
+          onBack={() => {
+            setShowLeaderboard(false);
+            setShowVictory(true);
+          }}
         />
       )}
     </div>

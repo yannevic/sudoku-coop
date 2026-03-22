@@ -7,7 +7,12 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
-export default function useChat(roomId: string | null, player: Player | null, playerName: string) {
+export default function useChat(
+  roomId: string | null,
+  player: Player | null,
+  playerName: string,
+  onPlayerJoin?: (name: string) => void
+) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const isOpenRef = useRef(false);
@@ -127,6 +132,10 @@ export default function useChat(roomId: string | null, player: Player | null, pl
       .channel(`room-${roomId}-chat`)
       .on('broadcast', { event: 'chat' }, ({ payload }: { payload: ChatMessage }) => {
         addMessage(payload, false);
+        if (payload.type === 'system' && payload.text.includes('entrou na sala') && onPlayerJoin) {
+          const match = payload.text.match(/🎮 (.+) entrou na sala!/);
+          if (match) onPlayerJoin(match[1]);
+        }
       })
       .subscribe();
 
@@ -136,7 +145,7 @@ export default function useChat(roomId: string | null, player: Player | null, pl
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [roomId, addMessage]);
+  }, [roomId, addMessage, onPlayerJoin]);
 
   return { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen };
 }

@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-export default function useTimer(active: boolean) {
+export default function useTimer(active: boolean, paused = false) {
   const [seconds, setSeconds] = useState(0);
   const [unlockedSolo, setUnlockedSolo] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const isRunning = active || unlockedSolo;
+  const isRunning = (active || unlockedSolo) && !paused;
 
   useEffect(() => {
     if (!isRunning) {

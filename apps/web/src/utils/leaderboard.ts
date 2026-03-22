@@ -13,9 +13,13 @@ export async function saveToLeaderboard(
   timeSeconds: number,
   difficulty: string
 ): Promise<void> {
-  await supabase
+  const { error } = await supabase
     .from('leaderboard')
     .insert({ duo_name: duoName, time_seconds: timeSeconds, difficulty });
+  // eslint-disable-next-line no-console
+  if (error) console.error('[leaderboard] erro ao salvar:', error);
+  // eslint-disable-next-line no-console
+  else console.log('[leaderboard] salvo:', { duoName, timeSeconds, difficulty });
 }
 
 export async function fetchLeaderboard(difficulty?: string): Promise<LeaderboardEntry[]> {

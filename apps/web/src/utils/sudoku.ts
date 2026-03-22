@@ -109,3 +109,16 @@ export type Notes = Set<number>[][];
 export function createEmptyNotes(): Notes {
   return Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set<number>()));
 }
+
+export type Player = 'creator' | 'joiner';
+
+export interface CellState {
+  value: number;
+  player: Player;
+}
+
+export type CurrentBoard = (CellState | null)[][];
+
+export function createEmptyCurrentBoard(): CurrentBoard {
+  return Array.from({ length: 9 }, () => Array(9).fill(null));
+}

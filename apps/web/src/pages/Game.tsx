@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SudokuBoard from '../components/SudokuBoard';
 import { useRoomContext } from '../context/RoomContext';
-import type { Board, Notes } from '../utils/sudoku';
+import type { CurrentBoard, Notes } from '../utils/sudoku';
 
 export default function Game() {
   const navigate = useNavigate();
@@ -45,8 +45,10 @@ export default function Game() {
           setRoomState({ ...roomState, notes: nextNotes });
           updateRoom(roomState.current, nextNotes);
         } else {
-          const nextCurrent: Board = roomState.current.map((row) => [...row]);
-          nextCurrent[r][c] = num;
+          const nextCurrent: CurrentBoard = roomState.current.map((row) =>
+            row.map((cell) => (cell ? { ...cell } : null))
+          );
+          nextCurrent[r][c] = { value: num, player: roomState.player };
           const nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
           nextNotes[r][c].clear();
           setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
@@ -55,7 +57,9 @@ export default function Game() {
       }
 
       if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
-        const nextCurrent: Board = roomState.current.map((row) => [...row]);
+        const nextCurrent: CurrentBoard = roomState.current.map((row) =>
+          row.map((cell) => (cell ? { ...cell } : null))
+        );
         nextCurrent[r][c] = null;
         const nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
         nextNotes[r][c].clear();

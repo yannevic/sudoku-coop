@@ -1,9 +1,9 @@
-import type { Board, Notes } from '../utils/sudoku';
+import type { Board, CurrentBoard, Notes } from '../utils/sudoku';
 import SudokuCell from './SudokuCell';
 
 interface SudokuBoardProps {
   puzzle: Board;
-  current: Board;
+  current: CurrentBoard;
   solution: Board;
   selected: [number, number] | null;
   notes: Notes;
@@ -31,9 +31,14 @@ export default function SudokuBoard({
   };
 
   const isError = (row: number, col: number) => {
-    const val = current[row][col];
-    if (!val) return false;
-    return val !== solution[row][col];
+    const cell = current[row][col];
+    if (!cell) return false;
+    return cell.value !== solution[row][col];
+  };
+
+  const getValue = (row: number, col: number) => {
+    if (puzzle[row][col] !== null) return puzzle[row][col];
+    return current[row][col]?.value ?? null;
   };
 
   return (
@@ -42,7 +47,8 @@ export default function SudokuBoard({
         row.map((cell, c) => (
           <SudokuCell
             key={`cell-${r * 9 + c}`}
-            value={cell}
+            value={getValue(r, c)}
+            player={cell?.player ?? null}
             notes={notes[r][c]}
             isFixed={puzzle[r][c] !== null}
             isSelected={selected?.[0] === r && selected?.[1] === c}

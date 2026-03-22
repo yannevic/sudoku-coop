@@ -8,15 +8,16 @@ import {
   ReactNode,
 } from 'react';
 import supabase from '../utils/supabase';
-import { generatePuzzle, createEmptyNotes } from '../utils/sudoku';
-import type { Board, Difficulty, Notes } from '../utils/sudoku';
+import { generatePuzzle, createEmptyNotes, createEmptyCurrentBoard } from '../utils/sudoku';
+import type { Board, Difficulty, Notes, Player, CurrentBoard } from '../utils/sudoku';
 
 interface RoomState {
   puzzle: Board;
   solution: Board;
-  current: Board;
+  current: CurrentBoard;
   notes: Notes;
   difficulty: Difficulty;
+  player: Player;
 }
 
 interface RoomContextType {
@@ -26,7 +27,7 @@ interface RoomContextType {
   error: string | null;
   createRoom: (difficulty: Difficulty) => Promise<void>;
   joinRoom: (code: string) => Promise<void>;
-  updateRoom: (current: Board, notes: Notes) => Promise<void>;
+  updateRoom: (current: CurrentBoard, notes: Notes) => Promise<void>;
   setRoomState: (state: RoomState) => void;
   leaveRoom: () => void;
 }
@@ -48,7 +49,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     const { puzzle, solution } = generatePuzzle(difficulty);
-    const current = puzzle.map((row) => [...row]);
+    const current = createEmptyCurrentBoard();
     const notes = createEmptyNotes();
     const id = generateRoomCode();
 
@@ -59,6 +60,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       current,
       notes: notes.map((row) => row.map((cell) => Array.from(cell))),
       difficulty,
+      player_count: 1,
     });
 
     if (err) {
@@ -68,7 +70,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     }
 
     setRoomId(id);
-    setRoomState({ puzzle, solution, current, notes, difficulty });
+    setRoomState({ puzzle, solution, current, notes, difficulty, player: 'creator' });
     setLoading(false);
   }, []);
 
@@ -92,6 +94,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       row.map((cell) => new Set(cell))
     );
 
+    await supabase.from('rooms').update({ player_count: 2 }).eq('id', code.toUpperCase());
+
     setRoomId(data.id);
     setRoomState({
       puzzle: data.puzzle,
@@ -99,12 +103,13 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       current: data.current,
       notes,
       difficulty: data.difficulty,
+      player: 'joiner',
     });
     setLoading(false);
   }, []);
 
   const updateRoom = useCallback(
-    async (current: Board, notes: Notes) => {
+    async (current: CurrentBoard, notes: Notes) => {
       if (!roomId) return;
 
       await supabase

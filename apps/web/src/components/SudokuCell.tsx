@@ -1,5 +1,8 @@
+import type { Player } from '../utils/sudoku';
+
 interface SudokuCellProps {
   value: number | null;
+  player: Player | null;
   notes: Set<number>;
   isFixed: boolean;
   isSelected: boolean;
@@ -13,6 +16,7 @@ interface SudokuCellProps {
 
 export default function SudokuCell({
   value,
+  player,
   notes,
   isFixed,
   isSelected,
@@ -37,6 +41,8 @@ export default function SudokuCell({
     if (isFixed) return 'text-[#2563a8] font-bold';
     if (isError) return 'text-red-500';
     if (isSelected) return 'text-white font-medium';
+    if (player === 'creator') return 'text-[#f37eb9] font-medium';
+    if (player === 'joiner') return 'text-[#22a5e0] font-medium';
     return 'text-[#9b5fa5]';
   };
 

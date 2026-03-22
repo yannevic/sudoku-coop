@@ -32,7 +32,7 @@ interface Particle {
 }
 
 function generateParticles(): Particle[] {
-  return Array.from({ length: 25 }, (_, i) => ({
+  return Array.from({ length: 12 }, (_, i) => ({
     id: i,
     left: Math.random() * 100,
     delay: Math.random() * 3,
@@ -152,7 +152,7 @@ export default function Game() {
   const displayName = playerName.trim() || 'Anônimo';
   const waitingForPlayer = playerCount < 2 && !unlockedSolo;
   const creatorName = player === 'creator' ? displayName : joinerName || 'Anônimo';
-  const joinerDisplayName = player === 'joiner' ? displayName : joinerName || 'Anônimo';
+  const joinerDisplayName = player === 'joiner' ? displayName : joinerName;
 
   const resetAndLeave = () => {
     setShowVictory(false);
@@ -224,6 +224,7 @@ export default function Game() {
                 animation: `float-up ${p.duration}s ${p.delay}s ease-out infinite`,
                 pointerEvents: 'none',
                 zIndex: 1,
+                willChange: 'transform',
               }}
             >
               🔥

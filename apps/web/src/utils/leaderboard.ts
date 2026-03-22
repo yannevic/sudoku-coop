@@ -39,8 +39,9 @@ export async function fetchLeaderboard(difficulty?: string): Promise<Leaderboard
 
 export function formatDuoName(nameA: string, nameB: string, date: Date): string {
   const a = nameA.trim() || 'Anônimo';
-  const b = nameB.trim() || 'Anônimo';
+  const b = nameB.trim();
   const d = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  if (!b) return `${a} · ${d}`;
   return `${a} & ${b} · ${d}`;
 }
 

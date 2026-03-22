@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardPaste, Trophy } from 'lucide-react';
+import { ClipboardPaste, Trophy, Loader2 } from 'lucide-react';
 import { useRoomContext } from '../context/RoomContext';
 import LeaderboardModal from '../components/LeaderboardModal';
 import type { Difficulty } from '../utils/sudoku';
@@ -111,7 +111,7 @@ export default function Home() {
           }`}
         >
           <Trophy size={14} />
-          Ver ranking de duplas
+          Ver ranking
         </button>
       </div>
 
@@ -190,7 +190,14 @@ export default function Home() {
           }`}
           title={!isNameValid ? 'Preencha seu nome primeiro' : undefined}
         >
-          {getCreateLabel()}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 size={16} className="animate-spin" />
+              {getCreateLabel()}
+            </span>
+          ) : (
+            getCreateLabel()
+          )}
         </button>
 
         <div className="flex items-center gap-2">

@@ -13,32 +13,6 @@ interface VictoryModalProps {
   onShowLeaderboard: () => void;
 }
 
-const CONFETTI = ['🌸', '✨', '🎉', '💜', '🥳', '⭐', '🎊', '💖'];
-
-function randomBetween(min: number, max: number): number {
-  return Math.random() * (max - min) + min;
-}
-
-interface Particle {
-  id: number;
-  emoji: string;
-  x: number;
-  delay: number;
-  duration: number;
-  size: number;
-}
-
-function generateParticles(): Particle[] {
-  return Array.from({ length: 20 }, (_, i) => ({
-    id: i,
-    emoji: CONFETTI[i % CONFETTI.length],
-    x: randomBetween(5, 95),
-    delay: randomBetween(0, 1.2),
-    duration: randomBetween(1.8, 3.2),
-    size: randomBetween(16, 28),
-  }));
-}
-
 export default function VictoryModal({
   timeSeconds,
   difficulty,
@@ -49,7 +23,6 @@ export default function VictoryModal({
   onShowLeaderboard,
 }: VictoryModalProps) {
   const savedRef = useRef(false);
-  const particles = useRef(generateParticles()).current;
   const duoName = useRef(formatDuoName(creatorName, joinerName, new Date())).current;
 
   useEffect(() => {
@@ -67,28 +40,7 @@ export default function VictoryModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm overflow-hidden">
-      {/* Partículas de confete */}
-      {particles.map((p) => (
-        <span
-          key={p.id}
-          style={{
-            position: 'fixed',
-            left: `${p.x}%`,
-            top: '-40px',
-            fontSize: p.size,
-            animation: `fall ${p.duration}s ${p.delay}s ease-in forwards`,
-            pointerEvents: 'none',
-          }}
-        >
-          {p.emoji}
-        </span>
-      ))}
-
       <style>{`
-        @keyframes fall {
-          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(105vh) rotate(360deg); opacity: 0.3; }
-        }
         @keyframes pop-in {
           0% { transform: scale(0.7); opacity: 0; }
           70% { transform: scale(1.05); }

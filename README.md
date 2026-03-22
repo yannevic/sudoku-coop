@@ -1,6 +1,11 @@
-# Monorepo Template
+# Sudoku Coop
 
-Este é meu template de um projeto **Monorepo**
+Este é meu projeto de **Sudoku Coop**
+
+# Instruções Gerais
+
+Jogo com a mesma lógica e objetivo que o Sudoku Padrão, porém Cooperativo, com sala criada, bate-papo entre players e ranking.
+Bom jogo e boa sorte ><
 
 # Instalação
 

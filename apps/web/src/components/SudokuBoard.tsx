@@ -8,6 +8,7 @@ interface SudokuBoardProps {
   selected: [number, number] | null;
   notes: Notes;
   isNoteMode: boolean;
+  isExtreme: boolean;
   onSelect: (row: number, col: number) => void;
 }
 
@@ -18,6 +19,7 @@ export default function SudokuBoard({
   selected,
   notes,
   isNoteMode,
+  isExtreme,
   onSelect,
 }: SudokuBoardProps) {
   const isHighlighted = (row: number, col: number) => {
@@ -54,8 +56,10 @@ export default function SudokuBoard({
     return getValue(row, col) === selectedValue;
   };
 
+  const boardBorder = isExtreme ? 'border-[#dc2626]' : 'border-[#9b5fa5]';
+
   return (
-    <div className="inline-grid grid-cols-9 border-2 border-[#9b5fa5]">
+    <div className={`inline-grid grid-cols-9 border-2 ${boardBorder}`}>
       {current.flatMap((row, r) =>
         row.map((cell, c) => (
           <SudokuCell
@@ -69,6 +73,7 @@ export default function SudokuBoard({
             isSameNumber={isSameNumber(r, c)}
             isError={isError(r, c)}
             isNoteMode={isNoteMode}
+            isExtreme={isExtreme}
             row={r}
             col={c}
             onClick={onSelect}

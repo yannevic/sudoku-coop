@@ -52,6 +52,11 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
 
+    // Aguarda o próximo frame para o React renderizar o loading antes de bloquear a thread
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
     const { puzzle, solution } = generatePuzzle(difficulty);
     const current = createEmptyCurrentBoard();
     const notes = createEmptyNotes();

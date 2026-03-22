@@ -1,5 +1,5 @@
 {
-  "name": "monorepo_template",
+  "name": "sudoku_coop",
   "private": true,
   "version": "1.0.0",
   "packageManager": "npm@10.2.4",

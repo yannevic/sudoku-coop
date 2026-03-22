@@ -23,6 +23,24 @@ function isBoardComplete(
   );
 }
 
+interface Particle {
+  id: number;
+  left: number;
+  delay: number;
+  duration: number;
+  size: number;
+}
+
+function generateParticles(): Particle[] {
+  return Array.from({ length: 25 }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    delay: Math.random() * 3,
+    duration: 4 + Math.random() * 4,
+    size: 20 + Math.random() * 20,
+  }));
+}
+
 export default function Game() {
   const navigate = useNavigate();
   const { roomId, roomState, playerName, updateRoom, setRoomState, leaveRoom } = useRoomContext();
@@ -35,6 +53,7 @@ export default function Game() {
 
   const player = roomState?.player ?? null;
   const playerCount = roomState?.playerCount ?? 1;
+  const isExtreme = roomState?.difficulty === 'extreme';
 
   const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
     useChat(roomId, player, playerName, (name) => setJoinerName(name));
@@ -46,6 +65,7 @@ export default function Game() {
 
   const hasAnnouncedRef = useRef(false);
   const showVictoryRef = useRef(false);
+  const particles = useRef(generateParticles()).current;
 
   useEffect(() => {
     if (!roomId) navigate('/');
@@ -57,7 +77,7 @@ export default function Game() {
     announceJoin();
   }, [roomState, announceJoin]);
 
-  // Detecta vitória — usa ref pra evitar duplo disparo sem depender de showVictory
+  // Detecta vitória
   useEffect(() => {
     if (!roomState || showVictoryRef.current) return;
     if (isBoardComplete(roomState.current, roomState.solution, roomState.puzzle)) {
@@ -131,7 +151,6 @@ export default function Game() {
 
   const displayName = playerName.trim() || 'Anônimo';
   const waitingForPlayer = playerCount < 2 && !unlockedSolo;
-
   const creatorName = player === 'creator' ? displayName : joinerName || 'Anônimo';
   const joinerDisplayName = player === 'joiner' ? displayName : joinerName || 'Anônimo';
 
@@ -146,25 +165,90 @@ export default function Game() {
 
   const handleLeave = resetAndLeave;
 
+  function getPlayerNameColor(p: 'creator' | 'joiner', extreme: boolean): string {
+    if (p === 'creator') return extreme ? 'text-[#f87171]' : 'text-[#f37eb9]';
+    return extreme ? 'text-[#fb923c]' : 'text-[#22a5e0]';
+  }
+
+  function getTimerBg(running: boolean, extreme: boolean): string {
+    if (running && extreme) return 'bg-[#111111] border border-[#dc2626]/30';
+    if (running) return 'bg-white';
+    if (extreme) return 'bg-[#111111] border border-dashed border-[#dc2626]/20';
+    return 'bg-white border border-dashed border-[#e9b8d9]';
+  }
+
+  // ─── Tema ──────────────────────────────────────────────────────────────
+  const bg = isExtreme ? 'bg-[#0a0a0a]' : 'bg-[#fce4f3]';
+  const titleColor = isExtreme ? 'text-[#ef4444]' : 'text-[#f37eb9]';
+  const barBg = isExtreme ? 'bg-[#111111] border border-[#dc2626]/30' : 'bg-white';
+  const roomCodeColor = isExtreme ? 'text-[#f97316]' : 'text-[#9b5fa5]';
+  const labelColor = isExtreme ? 'text-[#9a3030]' : 'text-gray-600';
+  const timerRunColor = isExtreme ? 'text-[#ef4444]' : 'text-[#9b5fa5]';
+  const timerPauseColor = isExtreme ? 'text-[#4a1515]' : 'text-[#d4a8c7]';
+  const timerIconColor = isExtreme ? 'text-[#dc2626]' : 'text-[#f37eb9]';
+  const timerPauseIconColor = isExtreme ? 'text-[#4a1515]' : 'text-[#d4a8c7]';
+  const waitingColor = isExtreme ? 'text-[#6b2121]' : 'text-[#c9a0d0]';
+  const soloColor = isExtreme
+    ? 'text-[#ef4444] hover:text-[#dc2626]'
+    : 'text-[#9b5fa5] hover:text-[#7a4a84]';
+  const noteActiveStyle = isExtreme ? 'bg-[#dc2626] text-white' : 'bg-[#9b5fa5] text-white';
+  const noteInactiveStyle = isExtreme
+    ? 'bg-[#1a1a1a] text-[#ef4444] border border-[#dc2626]/40 hover:bg-[#2a2a2a]'
+    : 'bg-white text-gray-700 border border-[#e9b8d9] hover:bg-[#fce4f3]';
+  const leaveStyle = isExtreme
+    ? 'bg-[#7f1d1d] text-white hover:bg-[#991b1b]'
+    : 'bg-[#9b5fa5] text-white hover:bg-[#7a4a84]';
+
   return (
-    <div className="min-h-screen bg-[#fce4f3] flex flex-col items-center justify-center gap-6 p-4">
-      <h1 className="text-3xl font-bold text-[#f37eb9]">Sudoku Coop 🌸</h1>
+    <div
+      className={`min-h-screen ${bg} flex flex-col items-center justify-center gap-6 p-4 relative overflow-hidden transition-colors duration-500`}
+    >
+      {/* Partículas de chama no modo extremo */}
+      {isExtreme && (
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <style>{`
+            @keyframes float-up {
+              0%   { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+              80%  { opacity: 0.7; }
+              100% { transform: translateY(-100vh) scale(0.5) rotate(15deg); opacity: 0; }
+            }
+          `}</style>
+          {particles.map((p) => (
+            <span
+              key={p.id}
+              style={{
+                position: 'fixed',
+                left: `${p.left}%`,
+                bottom: '0px',
+                fontSize: p.size,
+                animation: `float-up ${p.duration}s ${p.delay}s ease-out infinite`,
+                pointerEvents: 'none',
+                zIndex: 1,
+              }}
+            >
+              🔥
+            </span>
+          ))}
+        </div>
+      )}
+
+      <h1 className={`text-3xl font-bold ${titleColor} relative z-10`}>
+        {isExtreme ? '💀 Sudoku Extremo' : 'Sudoku Coop 🌸'}
+      </h1>
 
       {/* Barra superior */}
-      <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-sm flex-wrap justify-center">
-        <span className="text-gray-500 text-sm">
+      <div
+        className={`flex items-center gap-3 ${barBg} rounded-xl px-4 py-2 shadow-sm flex-wrap justify-center relative z-10`}
+      >
+        <span className={`text-sm ${labelColor}`}>
           Jogando como{' '}
-          <span
-            className={`font-bold ${
-              roomState.player === 'creator' ? 'text-[#f37eb9]' : 'text-[#22a5e0]'
-            }`}
-          >
+          <span className={`font-bold ${getPlayerNameColor(roomState.player, isExtreme)}`}>
             {displayName}
           </span>
         </span>
-        <div className="w-px h-4 bg-[#e9b8d9]" />
-        <span className="text-gray-600 text-sm font-semibold">Sala:</span>
-        <span className="text-[#9b5fa5] font-bold tracking-widest text-lg">{roomId}</span>
+        <div className={`w-px h-4 ${isExtreme ? 'bg-[#dc2626]/30' : 'bg-[#e9b8d9]'}`} />
+        <span className={`text-sm font-semibold ${labelColor}`}>Sala:</span>
+        <span className={`font-bold tracking-widest text-lg ${roomCodeColor}`}>{roomId}</span>
         <button
           type="button"
           onClick={() => {
@@ -172,7 +256,7 @@ export default function Game() {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
           }}
-          className="text-gray-400 hover:text-[#9b5fa5] transition-colors"
+          className={`transition-colors ${isExtreme ? 'text-[#6b2121] hover:text-[#ef4444]' : 'text-gray-400 hover:text-[#9b5fa5]'}`}
           title="Copiar código"
         >
           {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
@@ -180,16 +264,14 @@ export default function Game() {
       </div>
 
       {/* Timer */}
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-1 relative z-10">
         <div
-          className={`flex items-center gap-2 px-5 py-2 rounded-2xl shadow-sm transition-colors ${
-            isRunning ? 'bg-white' : 'bg-white border border-dashed border-[#e9b8d9]'
-          }`}
+          className={`flex items-center gap-2 px-5 py-2 rounded-2xl shadow-sm transition-colors ${getTimerBg(isRunning, isExtreme)}`}
         >
-          <Timer size={16} className={isRunning ? 'text-[#f37eb9]' : 'text-[#d4a8c7]'} />
+          <Timer size={16} className={isRunning ? timerIconColor : timerPauseIconColor} />
           <span
             className={`font-mono text-2xl font-bold tracking-widest transition-colors ${
-              isRunning ? 'text-[#9b5fa5]' : 'text-[#d4a8c7]'
+              isRunning ? timerRunColor : timerPauseColor
             }`}
           >
             {formatted}
@@ -198,11 +280,11 @@ export default function Game() {
 
         {waitingForPlayer && (
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[11px] text-[#c9a0d0]">⏸️ Aguardando segundo jogador...</span>
+            <span className={`text-[11px] ${waitingColor}`}>⏸️ Aguardando segundo jogador...</span>
             <button
               type="button"
               onClick={unlockSolo}
-              className="flex items-center gap-1 text-[11px] text-[#9b5fa5] hover:text-[#7a4a84] font-medium transition-colors underline underline-offset-2"
+              className={`flex items-center gap-1 text-[11px] font-medium transition-colors underline underline-offset-2 ${soloColor}`}
             >
               <Play size={10} />
               jogar sozinho
@@ -211,17 +293,20 @@ export default function Game() {
         )}
       </div>
 
-      <SudokuBoard
-        puzzle={roomState.puzzle}
-        current={roomState.current}
-        solution={roomState.solution}
-        selected={selected}
-        notes={roomState.notes}
-        isNoteMode={isNoteMode}
-        onSelect={handleSelect}
-      />
+      <div className="relative z-10">
+        <SudokuBoard
+          puzzle={roomState.puzzle}
+          current={roomState.current}
+          solution={roomState.solution}
+          selected={selected}
+          notes={roomState.notes}
+          isNoteMode={isNoteMode}
+          isExtreme={isExtreme}
+          onSelect={handleSelect}
+        />
+      </div>
 
-      <div className="flex gap-3 flex-wrap justify-center">
+      <div className="flex gap-3 flex-wrap justify-center relative z-10">
         {import.meta.env.DEV && (
           <button
             type="button"
@@ -244,9 +329,7 @@ export default function Game() {
           type="button"
           onClick={() => setIsNoteMode((prev) => !prev)}
           className={`px-4 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2 ${
-            isNoteMode
-              ? 'bg-[#9b5fa5] text-white'
-              : 'bg-white text-gray-700 border border-[#e9b8d9] hover:bg-[#fce4f3]'
+            isNoteMode ? noteActiveStyle : noteInactiveStyle
           }`}
         >
           ✏️ {isNoteMode ? 'Lápis ativado' : 'Lápis'}{' '}
@@ -257,10 +340,9 @@ export default function Game() {
           type="button"
           onClick={() => {
             sendSystemMessage(`👋 ${displayName} saiu da sala.`);
-            leaveRoom();
-            navigate('/');
+            handleLeave();
           }}
-          className="px-6 py-2 bg-[#9b5fa5] text-white rounded-xl hover:bg-[#7a4a84] transition-colors"
+          className={`px-6 py-2 rounded-xl transition-colors ${leaveStyle}`}
         >
           Sair da sala
         </button>

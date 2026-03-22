@@ -62,6 +62,7 @@ export default function VictoryModal({
     easy: 'Fácil',
     medium: 'Médio',
     hard: 'Difícil',
+    extreme: '💀 Extremo',
   };
 
   return (

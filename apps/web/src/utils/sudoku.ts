@@ -1,7 +1,7 @@
 // apps/web/src/utils/sudoku.ts
 
 export type Board = (number | null)[][];
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 
 // ─── Utilitários internos ───────────────────────────────────────────────
 
@@ -96,8 +96,9 @@ function hasUniqueSolution(board: Board): boolean {
 
 const CELLS_TO_REMOVE: Record<Difficulty, number> = {
   easy: 32,
-  medium: 42,
-  hard: 50,
+  medium: 46,
+  hard: 52,
+  extreme: 58,
 };
 
 function getCellsByQuadrant(): [number, number][][] {
@@ -118,7 +119,6 @@ function removeNumbers(board: Board, difficulty: Difficulty): Board {
   const puzzle = board.map((row) => [...row]);
   const target = CELLS_TO_REMOVE[difficulty];
 
-  // Distribui remoções uniformemente entre os 9 quadrantes
   const perQuadrant = Math.floor(target / 9);
   const extra = target % 9;
   const quadrants = getCellsByQuadrant();
@@ -146,7 +146,6 @@ function removeNumbers(board: Board, difficulty: Difficulty): Board {
     });
   });
 
-  // Se ainda não atingiu o target, tenta remover mais de qualquer posição
   if (removed < target) {
     const remaining = shuffle(
       Array.from({ length: 81 }, (_, i) => [Math.floor(i / 9), i % 9] as [number, number])
@@ -174,13 +173,10 @@ function removeNumbers(board: Board, difficulty: Difficulty): Board {
 // ─── API pública ────────────────────────────────────────────────────────
 
 export interface SudokuPuzzle {
-  /** Tabuleiro com buracos (null = célula vazia) */
   puzzle: Board;
-  /** Solução completa */
   solution: Board;
 }
 
-/** Gera um novo puzzle de sudoku */
 export function generatePuzzle(difficulty: Difficulty = 'medium'): SudokuPuzzle {
   const solution = createEmptyBoard();
   fillBoard(solution);
@@ -188,12 +184,10 @@ export function generatePuzzle(difficulty: Difficulty = 'medium'): SudokuPuzzle 
   return { puzzle, solution };
 }
 
-/** Verifica se um valor inserido pelo jogador é correto */
 export function checkMove(solution: Board, row: number, col: number, value: number): boolean {
   return solution[row][col] === value;
 }
 
-/** Verifica se o puzzle está completamente resolvido */
 export function isSolved(current: Board, solution: Board): boolean {
   return current.every((row, r) => row.every((cell, c) => cell === solution[r][c]));
 }

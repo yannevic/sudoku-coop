@@ -77,7 +77,6 @@ export default function Game() {
     announceJoin();
   }, [roomState, announceJoin]);
 
-  // Detecta vitória
   useEffect(() => {
     if (!roomState || showVictoryRef.current) return;
     if (isBoardComplete(roomState.current, roomState.solution, roomState.puzzle)) {
@@ -201,7 +200,7 @@ export default function Game() {
 
   return (
     <div
-      className={`min-h-screen ${bg} flex flex-col items-center justify-center gap-6 p-4 relative overflow-hidden transition-colors duration-500`}
+      className={`min-h-screen ${bg} flex flex-col items-center justify-center gap-4 sm:gap-6 p-3 sm:p-4 relative overflow-hidden transition-colors duration-500`}
     >
       {/* Partículas de chama no modo extremo */}
       {isExtreme && (
@@ -233,45 +232,51 @@ export default function Game() {
         </div>
       )}
 
-      <h1 className={`text-3xl font-bold ${titleColor} relative z-10`}>
+      <h1 className={`text-2xl sm:text-3xl font-bold ${titleColor} relative z-10`}>
         {isExtreme ? '💀 Sudoku Extremo' : 'Sudoku Coop 🌸'}
       </h1>
 
       {/* Barra superior */}
       <div
-        className={`flex items-center gap-3 ${barBg} rounded-xl px-4 py-2 shadow-sm flex-wrap justify-center relative z-10`}
+        className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-3 ${barBg} rounded-xl px-3 sm:px-4 py-2 shadow-sm w-full sm:w-auto relative z-10`}
       >
-        <span className={`text-sm ${labelColor}`}>
+        <span className={`text-xs sm:text-sm ${labelColor}`}>
           Jogando como{' '}
           <span className={`font-bold ${getPlayerNameColor(roomState.player, isExtreme)}`}>
             {displayName}
           </span>
         </span>
-        <div className={`w-px h-4 ${isExtreme ? 'bg-[#dc2626]/30' : 'bg-[#e9b8d9]'}`} />
-        <span className={`text-sm font-semibold ${labelColor}`}>Sala:</span>
-        <span className={`font-bold tracking-widest text-lg ${roomCodeColor}`}>{roomId}</span>
-        <button
-          type="button"
-          onClick={() => {
-            navigator.clipboard.writeText(roomId ?? '');
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-          className={`transition-colors ${isExtreme ? 'text-[#6b2121] hover:text-[#ef4444]' : 'text-gray-400 hover:text-[#9b5fa5]'}`}
-          title="Copiar código"
-        >
-          {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
-        </button>
+        <div
+          className={`hidden sm:block w-px h-4 ${isExtreme ? 'bg-[#dc2626]/30' : 'bg-[#e9b8d9]'}`}
+        />
+        <div className="flex items-center gap-2">
+          <span className={`text-xs sm:text-sm font-semibold ${labelColor}`}>Sala:</span>
+          <span className={`font-bold tracking-widest text-base sm:text-lg ${roomCodeColor}`}>
+            {roomId}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(roomId ?? '');
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            className={`transition-colors ${isExtreme ? 'text-[#6b2121] hover:text-[#ef4444]' : 'text-gray-400 hover:text-[#9b5fa5]'}`}
+            title="Copiar código"
+          >
+            {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+          </button>
+        </div>
       </div>
 
       {/* Timer */}
       <div className="flex flex-col items-center gap-1 relative z-10">
         <div
-          className={`flex items-center gap-2 px-5 py-2 rounded-2xl shadow-sm transition-colors ${getTimerBg(isRunning, isExtreme)}`}
+          className={`flex items-center gap-2 px-4 sm:px-5 py-1.5 sm:py-2 rounded-2xl shadow-sm transition-colors ${getTimerBg(isRunning, isExtreme)}`}
         >
-          <Timer size={16} className={isRunning ? timerIconColor : timerPauseIconColor} />
+          <Timer size={14} className={isRunning ? timerIconColor : timerPauseIconColor} />
           <span
-            className={`font-mono text-2xl font-bold tracking-widest transition-colors ${
+            className={`font-mono text-xl sm:text-2xl font-bold tracking-widest transition-colors ${
               isRunning ? timerRunColor : timerPauseColor
             }`}
           >
@@ -280,12 +285,14 @@ export default function Game() {
         </div>
 
         {waitingForPlayer && (
-          <div className="flex items-center gap-2 mt-1">
-            <span className={`text-[11px] ${waitingColor}`}>⏸️ Aguardando segundo jogador...</span>
+          <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
+            <span className={`text-[10px] sm:text-[11px] ${waitingColor}`}>
+              ⏸️ Aguardando segundo jogador...
+            </span>
             <button
               type="button"
               onClick={unlockSolo}
-              className={`flex items-center gap-1 text-[11px] font-medium transition-colors underline underline-offset-2 ${soloColor}`}
+              className={`flex items-center gap-1 text-[10px] sm:text-[11px] font-medium transition-colors underline underline-offset-2 ${soloColor}`}
             >
               <Play size={10} />
               jogar sozinho
@@ -307,7 +314,77 @@ export default function Game() {
         />
       </div>
 
-      <div className="flex gap-3 flex-wrap justify-center relative z-10">
+      {/* Teclado numérico mobile */}
+      <div className="grid grid-cols-9 gap-1 w-full max-w-[288px] sm:hidden relative z-10">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+          <button
+            key={num}
+            type="button"
+            onClick={() => {
+              if (!selected || !roomState) return;
+              const [r, c] = selected;
+              if (roomState.puzzle[r][c] !== null) return;
+              if (isNoteMode) {
+                const nextNotes: Notes = roomState.notes.map((row) =>
+                  row.map((cell) => new Set(cell))
+                );
+                if (nextNotes[r][c].has(num)) {
+                  nextNotes[r][c].delete(num);
+                } else {
+                  nextNotes[r][c].add(num);
+                }
+                setRoomState({ ...roomState, notes: nextNotes });
+                updateRoom(roomState.current, nextNotes);
+              } else {
+                const nextCurrent: CurrentBoard = roomState.current.map((row) =>
+                  row.map((cell) => (cell ? { ...cell } : null))
+                );
+                nextCurrent[r][c] = { value: num, player: roomState.player };
+                const nextNotes: Notes = roomState.notes.map((row) =>
+                  row.map((cell) => new Set(cell))
+                );
+                nextNotes[r][c].clear();
+                setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
+                updateRoom(nextCurrent, nextNotes);
+              }
+            }}
+            className={`h-8 rounded text-sm font-bold transition-colors ${
+              isExtreme
+                ? 'bg-[#1a1a1a] text-[#ef4444] border border-[#dc2626]/40 active:bg-[#dc2626] active:text-white'
+                : 'bg-white text-[#9b5fa5] border border-[#e9b8d9] active:bg-[#f37eb9] active:text-white'
+            }`}
+          >
+            {num}
+          </button>
+        ))}
+      </div>
+
+      {/* Botão apagar mobile */}
+      <button
+        type="button"
+        onClick={() => {
+          if (!selected || !roomState) return;
+          const [r, c] = selected;
+          if (roomState.puzzle[r][c] !== null) return;
+          const nextCurrent: CurrentBoard = roomState.current.map((row) =>
+            row.map((cell) => (cell ? { ...cell } : null))
+          );
+          nextCurrent[r][c] = null;
+          const nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
+          nextNotes[r][c].clear();
+          setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
+          updateRoom(nextCurrent, nextNotes);
+        }}
+        className={`sm:hidden w-full max-w-[288px] py-1.5 rounded text-xs font-medium transition-colors relative z-10 ${
+          isExtreme
+            ? 'bg-[#1a1a1a] text-[#9a3030] border border-[#dc2626]/20'
+            : 'bg-white text-gray-400 border border-[#e9b8d9]'
+        }`}
+      >
+        ⌫ Apagar
+      </button>
+
+      <div className="flex gap-2 sm:gap-3 flex-wrap justify-center relative z-10">
         {import.meta.env.DEV && (
           <button
             type="button"
@@ -321,20 +398,20 @@ export default function Game() {
               setRoomState({ ...roomState, current: completedCurrent });
               updateRoom(completedCurrent, roomState.notes);
             }}
-            className="px-4 py-2 rounded text-sm font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 hover:bg-yellow-200 transition-colors"
+            className="px-3 sm:px-4 py-2 rounded text-sm font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 hover:bg-yellow-200 transition-colors"
           >
-            🧪 Completar tabuleiro
+            🧪 Completar
           </button>
         )}
         <button
           type="button"
           onClick={() => setIsNoteMode((prev) => !prev)}
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2 ${
+          className={`px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${
             isNoteMode ? noteActiveStyle : noteInactiveStyle
           }`}
         >
           ✏️ {isNoteMode ? 'Lápis ativado' : 'Lápis'}{' '}
-          <span className="text-xs opacity-70">(Tab)</span>
+          <span className="text-xs opacity-70 hidden sm:inline">(Tab)</span>
         </button>
 
         <button
@@ -343,7 +420,7 @@ export default function Game() {
             sendSystemMessage(`👋 ${displayName} saiu da sala.`);
             handleLeave();
           }}
-          className={`px-6 py-2 rounded-xl transition-colors ${leaveStyle}`}
+          className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm transition-colors ${leaveStyle}`}
         >
           Sair da sala
         </button>

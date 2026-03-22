@@ -107,8 +107,10 @@ export default function SudokuCell({
       type="button"
       onClick={() => onClick(row, col)}
       className={`
-        w-14 h-14 flex items-center justify-center text-xl border
-        cursor-pointer transition-colors duration-100 relative
+        w-8 h-8 sm:w-14 sm:h-14
+        flex items-center justify-center
+        text-sm sm:text-xl
+        border cursor-pointer transition-colors duration-100 relative
         ${borderColor} ${borderRight} ${borderBottom} ${bg} ${textColor} ${textWeight}
       `}
     >
@@ -119,7 +121,7 @@ export default function SudokuCell({
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
             <span
               key={n}
-              className={`flex items-center justify-center text-[8px] leading-none font-medium ${getNoteColor(notes.has(n), isExtreme)}`}
+              className={`flex items-center justify-center text-[6px] sm:text-[8px] leading-none font-medium ${getNoteColor(notes.has(n), isExtreme)}`}
             >
               {n}
             </span>

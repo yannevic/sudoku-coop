@@ -27,6 +27,8 @@ interface RoomContextType {
   playerName: string;
   loading: boolean;
   error: string | null;
+  isDark: boolean;
+  toggleDark: () => void;
   createRoom: (difficulty: Difficulty) => Promise<void>;
   joinRoom: (code: string) => Promise<void>;
   updateRoom: (current: CurrentBoard, notes: Notes) => Promise<void>;
@@ -47,12 +49,16 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [playerName, setPlayerName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDark, setIsDark] = useState(false);
+
+  const toggleDark = useCallback(() => {
+    setIsDark((prev) => !prev);
+  }, []);
 
   const createRoom = useCallback(async (difficulty: Difficulty) => {
     setLoading(true);
     setError(null);
 
-    // Aguarda o próximo frame para o React renderizar o loading antes de bloquear a thread
     await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
@@ -185,6 +191,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       playerName,
       loading,
       error,
+      isDark,
+      toggleDark,
       createRoom,
       joinRoom,
       updateRoom,
@@ -192,7 +200,19 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       setPlayerName,
       leaveRoom,
     }),
-    [roomId, roomState, playerName, loading, error, createRoom, joinRoom, updateRoom, leaveRoom]
+    [
+      roomId,
+      roomState,
+      playerName,
+      loading,
+      error,
+      isDark,
+      toggleDark,
+      createRoom,
+      joinRoom,
+      updateRoom,
+      leaveRoom,
+    ]
   );
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

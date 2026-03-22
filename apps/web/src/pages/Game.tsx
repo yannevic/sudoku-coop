@@ -1,4 +1,4 @@
-import { Copy, Check, Timer, Play } from 'lucide-react';
+import { Copy, Check, Timer, Play, Moon, Sun } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SudokuBoard from '../components/SudokuBoard';
@@ -23,7 +23,6 @@ function isBoardComplete(
   );
 }
 
-// Uma célula só pode ser editada se ainda não estiver correta na solução
 function isCellLocked(
   current: CurrentBoard,
   solution: (number | null)[][],
@@ -54,9 +53,110 @@ function generateParticles(): Particle[] {
   }));
 }
 
+function getPlayerNameColor(p: 'creator' | 'joiner', extreme: boolean): string {
+  if (p === 'creator') return extreme ? 'text-[#f87171]' : 'text-[#f37eb9]';
+  return extreme ? 'text-[#fb923c]' : 'text-[#22a5e0]';
+}
+
+function getBg(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'bg-[#0a0a0a]';
+  if (isDark) return 'bg-[#1a1a2e]';
+  return 'bg-[#fce4f3]';
+}
+
+function getBarBg(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'bg-[#111111] border border-[#dc2626]/30';
+  if (isDark) return 'bg-[#16213e] border border-[#2a2a4a]';
+  return 'bg-white';
+}
+
+function getTimerBg(running: boolean, isExtreme: boolean, isDark: boolean): string {
+  if (running && isExtreme) return 'bg-[#111111] border border-[#dc2626]/30';
+  if (running && isDark) return 'bg-[#16213e] border border-[#2a2a4a]';
+  if (running) return 'bg-white';
+  if (isExtreme) return 'bg-[#111111] border border-dashed border-[#dc2626]/20';
+  if (isDark) return 'bg-[#16213e] border border-dashed border-[#2a2a4a]';
+  return 'bg-white border border-dashed border-[#e9b8d9]';
+}
+
+function getRoomCodeColor(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'text-[#f97316]';
+  if (isDark) return 'text-[#f37eb9]';
+  return 'text-[#9b5fa5]';
+}
+
+function getLabelColor(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'text-[#9a3030]';
+  if (isDark) return 'text-[#aaaacc]';
+  return 'text-gray-600';
+}
+
+function getTimerRunColor(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'text-[#ef4444]';
+  if (isDark) return 'text-[#f37eb9]';
+  return 'text-[#9b5fa5]';
+}
+
+function getTimerPauseColor(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'text-[#4a1515]';
+  if (isDark) return 'text-[#2a2a4a]';
+  return 'text-[#d4a8c7]';
+}
+
+function getTimerPauseIconColor(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'text-[#4a1515]';
+  if (isDark) return 'text-[#2a2a4a]';
+  return 'text-[#d4a8c7]';
+}
+
+function getWaitingColor(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'text-[#6b2121]';
+  if (isDark) return 'text-[#44446a]';
+  return 'text-[#c9a0d0]';
+}
+
+function getSoloColor(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'text-[#ef4444] hover:text-[#dc2626]';
+  if (isDark) return 'text-[#f37eb9] hover:text-[#e06aa5]';
+  return 'text-[#9b5fa5] hover:text-[#7a4a84]';
+}
+
+function getNoteInactiveStyle(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'bg-[#1a1a1a] text-[#ef4444] border border-[#dc2626]/40 hover:bg-[#2a2a2a]';
+  if (isDark) return 'bg-[#16213e] text-[#aaaacc] border border-[#2a2a4a] hover:bg-[#1e2a4a]';
+  return 'bg-white text-gray-700 border border-[#e9b8d9] hover:bg-[#fce4f3]';
+}
+
+function getBarDividerColor(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'bg-[#dc2626]/30';
+  if (isDark) return 'bg-[#2a2a4a]';
+  return 'bg-[#e9b8d9]';
+}
+
+function getCopyButtonColor(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'text-[#6b2121] hover:text-[#ef4444]';
+  if (isDark) return 'text-[#44446a] hover:text-[#f37eb9]';
+  return 'text-gray-400 hover:text-[#9b5fa5]';
+}
+
+function getMobileNumButtonStyle(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme)
+    return 'bg-[#1a1a1a] text-[#ef4444] border border-[#dc2626]/40 active:bg-[#dc2626] active:text-white';
+  if (isDark)
+    return 'bg-[#16213e] text-[#f37eb9] border border-[#2a2a4a] active:bg-[#f37eb9] active:text-white';
+  return 'bg-white text-[#9b5fa5] border border-[#e9b8d9] active:bg-[#f37eb9] active:text-white';
+}
+
+function getMobileDeleteStyle(isExtreme: boolean, isDark: boolean): string {
+  if (isExtreme) return 'bg-[#1a1a1a] text-[#9a3030] border border-[#dc2626]/20';
+  if (isDark) return 'bg-[#16213e] text-[#44446a] border border-[#2a2a4a]';
+  return 'bg-white text-gray-400 border border-[#e9b8d9]';
+}
+
 export default function Game() {
   const navigate = useNavigate();
-  const { roomId, roomState, playerName, updateRoom, setRoomState, leaveRoom } = useRoomContext();
+  const { roomId, roomState, playerName, updateRoom, setRoomState, leaveRoom, isDark, toggleDark } =
+    useRoomContext();
   const [selected, setSelected] = useState<[number, number] | null>(null);
   const [isNoteMode, setIsNoteMode] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -113,7 +213,6 @@ export default function Game() {
       if (!selected || !roomState) return;
       const [r, c] = selected;
 
-      // não permite editar fixos nem células já corretas
       if (isCellLocked(roomState.current, roomState.solution, roomState.puzzle, r, c)) return;
 
       const num = parseInt(e.key, 10);
@@ -179,45 +278,20 @@ export default function Game() {
 
   const handleLeave = resetAndLeave;
 
-  function getPlayerNameColor(p: 'creator' | 'joiner', extreme: boolean): string {
-    if (p === 'creator') return extreme ? 'text-[#f87171]' : 'text-[#f37eb9]';
-    return extreme ? 'text-[#fb923c]' : 'text-[#22a5e0]';
-  }
-
-  function getTimerBg(running: boolean, extreme: boolean): string {
-    if (running && extreme) return 'bg-[#111111] border border-[#dc2626]/30';
-    if (running) return 'bg-white';
-    if (extreme) return 'bg-[#111111] border border-dashed border-[#dc2626]/20';
-    return 'bg-white border border-dashed border-[#e9b8d9]';
-  }
-
-  // ─── Tema ──────────────────────────────────────────────────────────────
-  const bg = isExtreme ? 'bg-[#0a0a0a]' : 'bg-[#fce4f3]';
-  const titleColor = isExtreme ? 'text-[#ef4444]' : 'text-[#f37eb9]';
-  const barBg = isExtreme ? 'bg-[#111111] border border-[#dc2626]/30' : 'bg-white';
-  const roomCodeColor = isExtreme ? 'text-[#f97316]' : 'text-[#9b5fa5]';
-  const labelColor = isExtreme ? 'text-[#9a3030]' : 'text-gray-600';
-  const timerRunColor = isExtreme ? 'text-[#ef4444]' : 'text-[#9b5fa5]';
-  const timerPauseColor = isExtreme ? 'text-[#4a1515]' : 'text-[#d4a8c7]';
-  const timerIconColor = isExtreme ? 'text-[#dc2626]' : 'text-[#f37eb9]';
-  const timerPauseIconColor = isExtreme ? 'text-[#4a1515]' : 'text-[#d4a8c7]';
-  const waitingColor = isExtreme ? 'text-[#6b2121]' : 'text-[#c9a0d0]';
-  const soloColor = isExtreme
-    ? 'text-[#ef4444] hover:text-[#dc2626]'
-    : 'text-[#9b5fa5] hover:text-[#7a4a84]';
   const noteActiveStyle = isExtreme ? 'bg-[#dc2626] text-white' : 'bg-[#9b5fa5] text-white';
-  const noteInactiveStyle = isExtreme
-    ? 'bg-[#1a1a1a] text-[#ef4444] border border-[#dc2626]/40 hover:bg-[#2a2a2a]'
-    : 'bg-white text-gray-700 border border-[#e9b8d9] hover:bg-[#fce4f3]';
   const leaveStyle = isExtreme
     ? 'bg-[#7f1d1d] text-white hover:bg-[#991b1b]'
     : 'bg-[#9b5fa5] text-white hover:bg-[#7a4a84]';
+  const darkToggleStyle = isDark
+    ? 'text-[#f37eb9] hover:text-[#e06aa5]'
+    : 'text-gray-400 hover:text-[#9b5fa5]';
+  const timerIconColor = isExtreme ? 'text-[#dc2626]' : 'text-[#f37eb9]';
+  const titleColor = isExtreme ? 'text-[#ef4444]' : 'text-[#f37eb9]';
 
   return (
     <div
-      className={`min-h-screen ${bg} flex flex-col items-center justify-center gap-4 sm:gap-6 p-3 sm:p-4 relative overflow-hidden transition-colors duration-500`}
+      className={`min-h-screen ${getBg(isExtreme, isDark)} flex flex-col items-center justify-center gap-4 sm:gap-6 p-3 sm:p-4 relative overflow-hidden transition-colors duration-500`}
     >
-      {/* Partículas de chama no modo extremo */}
       {isExtreme && (
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
           <style>{`
@@ -253,20 +327,22 @@ export default function Game() {
 
       {/* Barra superior */}
       <div
-        className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-3 ${barBg} rounded-xl px-3 sm:px-4 py-2 shadow-sm w-full sm:w-auto relative z-10`}
+        className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-3 ${getBarBg(isExtreme, isDark)} rounded-xl px-3 sm:px-4 py-2 shadow-sm w-full sm:w-auto relative z-10`}
       >
-        <span className={`text-xs sm:text-sm ${labelColor}`}>
+        <span className={`text-xs sm:text-sm ${getLabelColor(isExtreme, isDark)}`}>
           Jogando como{' '}
           <span className={`font-bold ${getPlayerNameColor(roomState.player, isExtreme)}`}>
             {displayName}
           </span>
         </span>
-        <div
-          className={`hidden sm:block w-px h-4 ${isExtreme ? 'bg-[#dc2626]/30' : 'bg-[#e9b8d9]'}`}
-        />
+        <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
         <div className="flex items-center gap-2">
-          <span className={`text-xs sm:text-sm font-semibold ${labelColor}`}>Sala:</span>
-          <span className={`font-bold tracking-widest text-base sm:text-lg ${roomCodeColor}`}>
+          <span className={`text-xs sm:text-sm font-semibold ${getLabelColor(isExtreme, isDark)}`}>
+            Sala:
+          </span>
+          <span
+            className={`font-bold tracking-widest text-base sm:text-lg ${getRoomCodeColor(isExtreme, isDark)}`}
+          >
             {roomId}
           </span>
           <button
@@ -276,23 +352,41 @@ export default function Game() {
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
             }}
-            className={`transition-colors ${isExtreme ? 'text-[#6b2121] hover:text-[#ef4444]' : 'text-gray-400 hover:text-[#9b5fa5]'}`}
+            className={`transition-colors ${getCopyButtonColor(isExtreme, isDark)}`}
             title="Copiar código"
           >
             {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
           </button>
         </div>
+        {!isExtreme && (
+          <>
+            <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
+            <button
+              type="button"
+              onClick={toggleDark}
+              className={`transition-colors ${darkToggleStyle}`}
+              title={isDark ? 'Modo claro' : 'Modo escuro'}
+            >
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+          </>
+        )}
       </div>
 
       {/* Timer */}
       <div className="flex flex-col items-center gap-1 relative z-10">
         <div
-          className={`flex items-center gap-2 px-4 sm:px-5 py-1.5 sm:py-2 rounded-2xl shadow-sm transition-colors ${getTimerBg(isRunning, isExtreme)}`}
+          className={`flex items-center gap-2 px-4 sm:px-5 py-1.5 sm:py-2 rounded-2xl shadow-sm transition-colors ${getTimerBg(isRunning, isExtreme, isDark)}`}
         >
-          <Timer size={14} className={isRunning ? timerIconColor : timerPauseIconColor} />
+          <Timer
+            size={14}
+            className={isRunning ? timerIconColor : getTimerPauseIconColor(isExtreme, isDark)}
+          />
           <span
             className={`font-mono text-xl sm:text-2xl font-bold tracking-widest transition-colors ${
-              isRunning ? timerRunColor : timerPauseColor
+              isRunning
+                ? getTimerRunColor(isExtreme, isDark)
+                : getTimerPauseColor(isExtreme, isDark)
             }`}
           >
             {formatted}
@@ -301,13 +395,13 @@ export default function Game() {
 
         {waitingForPlayer && (
           <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
-            <span className={`text-[10px] sm:text-[11px] ${waitingColor}`}>
+            <span className={`text-[10px] sm:text-[11px] ${getWaitingColor(isExtreme, isDark)}`}>
               ⏸️ Aguardando segundo jogador...
             </span>
             <button
               type="button"
               onClick={unlockSolo}
-              className={`flex items-center gap-1 text-[10px] sm:text-[11px] font-medium transition-colors underline underline-offset-2 ${soloColor}`}
+              className={`flex items-center gap-1 text-[10px] sm:text-[11px] font-medium transition-colors underline underline-offset-2 ${getSoloColor(isExtreme, isDark)}`}
             >
               <Play size={10} />
               jogar sozinho
@@ -364,11 +458,7 @@ export default function Game() {
                 updateRoom(nextCurrent, nextNotes);
               }
             }}
-            className={`h-8 rounded text-sm font-bold transition-colors ${
-              isExtreme
-                ? 'bg-[#1a1a1a] text-[#ef4444] border border-[#dc2626]/40 active:bg-[#dc2626] active:text-white'
-                : 'bg-white text-[#9b5fa5] border border-[#e9b8d9] active:bg-[#f37eb9] active:text-white'
-            }`}
+            className={`h-8 rounded text-sm font-bold transition-colors ${getMobileNumButtonStyle(isExtreme, isDark)}`}
           >
             {num}
           </button>
@@ -391,11 +481,7 @@ export default function Game() {
           setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
           updateRoom(nextCurrent, nextNotes);
         }}
-        className={`sm:hidden w-full max-w-[288px] py-1.5 rounded text-xs font-medium transition-colors relative z-10 ${
-          isExtreme
-            ? 'bg-[#1a1a1a] text-[#9a3030] border border-[#dc2626]/20'
-            : 'bg-white text-gray-400 border border-[#e9b8d9]'
-        }`}
+        className={`sm:hidden w-full max-w-[288px] py-1.5 rounded text-xs font-medium transition-colors relative z-10 ${getMobileDeleteStyle(isExtreme, isDark)}`}
       >
         ⌫ Apagar
       </button>
@@ -423,7 +509,7 @@ export default function Game() {
           type="button"
           onClick={() => setIsNoteMode((prev) => !prev)}
           className={`px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${
-            isNoteMode ? noteActiveStyle : noteInactiveStyle
+            isNoteMode ? noteActiveStyle : getNoteInactiveStyle(isExtreme, isDark)
           }`}
         >
           ✏️ {isNoteMode ? 'Lápis ativado' : 'Lápis'}{' '}

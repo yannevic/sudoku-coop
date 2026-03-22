@@ -520,7 +520,7 @@ export default function ChatWindow({
       >
         <MessageCircle size={26} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-[#f37eb9] text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 shadow">
+          <span className="absolute -top-1 -right-1 bg-[#f37eb9] text-white text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1 shadow">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -599,7 +599,7 @@ export default function ChatWindow({
                       type="button"
                       onClick={() => setActiveCategory(i)}
                       title={cat.title}
-                      className={`flex-shrink-0 text-base px-2 py-1 rounded-t transition-colors ${
+                      className={`shrink-0 text-base px-2 py-1 rounded-t transition-colors ${
                         activeCategory === i
                           ? 'bg-[#fce4f3] border-b-2 border-[#f37eb9]'
                           : 'hover:bg-[#fdf6fb]'
@@ -626,7 +626,7 @@ export default function ChatWindow({
             <button
               type="button"
               onClick={() => setShowEmojis((prev) => !prev)}
-              className={`text-xl transition-transform hover:scale-110 flex-shrink-0 ${showEmojis ? 'opacity-100' : 'opacity-60'}`}
+              className={`text-xl transition-transform hover:scale-110 shrink-0 ${showEmojis ? 'opacity-100' : 'opacity-60'}`}
               title="Emojis"
             >
               😄
@@ -645,7 +645,7 @@ export default function ChatWindow({
               type="button"
               onClick={handleSend}
               disabled={!input.trim()}
-              className="bg-[#9b5fa5] hover:bg-[#7a4a84] disabled:opacity-40 text-white rounded-xl p-1.5 transition-colors flex-shrink-0"
+              className="bg-[#9b5fa5] hover:bg-[#7a4a84] disabled:opacity-40 text-white rounded-xl p-1.5 transition-colors shrink-0"
               title="Enviar"
             >
               <Send size={15} />

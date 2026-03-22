@@ -3,10 +3,18 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SudokuBoard from '../components/SudokuBoard';
 import ChatWindow from '../components/ChatWindow';
+import VictoryModal from '../components/VictoryModal';
+import LeaderboardModal from '../components/LeaderboardModal';
 import { useRoomContext } from '../context/RoomContext';
 import useChat from '../hooks/useChat';
 import useTimer from '../hooks/useTimer';
 import type { CurrentBoard, Notes } from '../utils/sudoku';
+
+function isBoardComplete(current: CurrentBoard, solution: (number | null)[][]): boolean {
+  return current.every((row, r) =>
+    row.every((cell, c) => cell !== null && cell.value === solution[r][c])
+  );
+}
 
 export default function Game() {
   const navigate = useNavigate();
@@ -14,6 +22,9 @@ export default function Game() {
   const [selected, setSelected] = useState<[number, number] | null>(null);
   const [isNoteMode, setIsNoteMode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showVictory, setShowVictory] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [joinerName, setJoinerName] = useState('');
 
   const player = roomState?.player ?? null;
   const playerCount = roomState?.playerCount ?? 1;
@@ -21,9 +32,10 @@ export default function Game() {
   const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
     useChat(roomId, player, playerName);
 
-  const { formatted, isRunning, unlockedSolo, unlockSolo } = useTimer(playerCount >= 2);
+  const { seconds, formatted, isRunning, unlockedSolo, unlockSolo } = useTimer(playerCount >= 2);
 
   const hasAnnouncedRef = useRef(false);
+  const victoryCheckedRef = useRef(false);
 
   useEffect(() => {
     if (!roomId) navigate('/');
@@ -34,6 +46,25 @@ export default function Game() {
     hasAnnouncedRef.current = true;
     announceJoin();
   }, [roomState, announceJoin]);
+
+  // Detecta nome do joiner via mensagens de sistema
+  useEffect(() => {
+    messages.forEach((msg) => {
+      if (msg.type === 'system' && msg.text.includes('entrou na sala') && player === 'creator') {
+        const match = msg.text.match(/🎮 (.+) entrou na sala!/);
+        if (match) setJoinerName(match[1]);
+      }
+    });
+  }, [messages, player]);
+
+  // Detecta vitória
+  useEffect(() => {
+    if (!roomState || showVictory || victoryCheckedRef.current) return;
+    if (isBoardComplete(roomState.current, roomState.solution)) {
+      victoryCheckedRef.current = true;
+      setShowVictory(true);
+    }
+  }, [roomState, showVictory]);
 
   const handleSelect = (row: number, col: number) => {
     setSelected([row, col]);
@@ -101,6 +132,15 @@ export default function Game() {
   const displayName = playerName.trim() || 'Anônimo';
   const waitingForPlayer = playerCount < 2 && !unlockedSolo;
 
+  const creatorName = player === 'creator' ? displayName : joinerName;
+  const joinerDisplayName = player === 'joiner' ? displayName : joinerName;
+
+  const handlePlayAgain = () => {
+    setShowVictory(false);
+    leaveRoom();
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-[#fce4f3] flex flex-col items-center justify-center gap-6 p-4">
       <h1 className="text-3xl font-bold text-[#f37eb9]">Sudoku Coop 🌸</h1>
@@ -158,7 +198,6 @@ export default function Game() {
               type="button"
               onClick={unlockSolo}
               className="flex items-center gap-1 text-[11px] text-[#9b5fa5] hover:text-[#7a4a84] font-medium transition-colors underline underline-offset-2"
-              title="Jogar sozinho e contar o tempo"
             >
               <Play size={10} />
               jogar sozinho
@@ -211,6 +250,27 @@ export default function Game() {
         onSend={sendMessage}
         onOpenChange={setIsOpen}
       />
+
+      {showVictory && (
+        <VictoryModal
+          timeSeconds={seconds}
+          difficulty={roomState.difficulty}
+          creatorName={creatorName}
+          joinerName={joinerDisplayName}
+          onPlayAgain={handlePlayAgain}
+          onShowLeaderboard={() => {
+            setShowVictory(false);
+            setShowLeaderboard(true);
+          }}
+        />
+      )}
+
+      {showLeaderboard && (
+        <LeaderboardModal
+          initialDifficulty={roomState.difficulty}
+          onClose={() => setShowLeaderboard(false)}
+        />
+      )}
     </div>
   );
 }

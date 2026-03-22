@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardPaste } from 'lucide-react';
+import { ClipboardPaste, Trophy } from 'lucide-react';
 import { useRoomContext } from '../context/RoomContext';
+import LeaderboardModal from '../components/LeaderboardModal';
 import type { Difficulty } from '../utils/sudoku';
 
 const ROOM_CODE_REGEX = /^[A-Z0-9]{4}$/;
@@ -17,6 +18,7 @@ export default function Home() {
   const [code, setCode] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [pasteHint, setPasteHint] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   useEffect(() => {
     if (roomId) navigate('/game');
@@ -58,15 +60,25 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#fce4f3] flex flex-col items-center justify-center gap-8 p-4">
-      <h1 className="text-4xl font-bold text-[#f37eb9]">Sudoku Coop 🌸</h1>
+      <div className="flex flex-col items-center gap-2">
+        <h1 className="text-4xl font-bold text-[#f37eb9]">Sudoku Coop 🌸</h1>
+        <button
+          type="button"
+          onClick={() => setShowLeaderboard(true)}
+          className="flex items-center gap-1.5 text-[#9b5fa5] text-sm font-medium hover:text-[#7a4a84] transition-colors"
+        >
+          <Trophy size={14} />
+          Ver ranking de duplas
+        </button>
+      </div>
 
       <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col gap-6 w-full max-w-sm">
         {/* Campo de nome */}
-        <label
-          className="flex flex-col gap-2 text-sm font-medium text-gray-600"
-          htmlFor="player-name"
-        >
-          Seu nome
+        <div className="flex flex-col gap-2">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label className="text-sm font-medium text-gray-600" htmlFor="player-name">
+            Seu nome
+          </label>
           <input
             id="player-name"
             type="text"
@@ -74,9 +86,9 @@ export default function Home() {
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value.slice(0, 20))}
             maxLength={20}
-            className="w-full px-4 py-3 border border-[#e9b8d9] rounded-xl text-sm text-gray-700 focus:outline-none focus:border-[#f37eb9] transition-colors placeholder-[#d4a8c7] font-normal"
+            className="w-full px-4 py-3 border border-[#e9b8d9] rounded-xl text-sm text-gray-700 focus:outline-none focus:border-[#f37eb9] transition-colors placeholder-[#d4a8c7]"
           />
-        </label>
+        </div>
 
         <div className="h-px bg-[#f0d6eb]" />
 
@@ -158,6 +170,8 @@ export default function Home() {
 
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
       </div>
+
+      {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
     </div>
   );
 }

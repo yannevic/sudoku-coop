@@ -32,6 +32,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "vite-plugin-svgr": "^4.5.0"
+    "vite-plugin-svgr": "^4.5.0",
+    "react-router-dom": "^7.13.1"
   }
 }

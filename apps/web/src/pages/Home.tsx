@@ -58,6 +58,7 @@ export default function Home() {
     await joinRoom(code);
   };
 
+  // Agora só cola quando o usuário clica no botão, e confirma antes
   const tryPasteFromClipboard = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -65,11 +66,15 @@ export default function Home() {
         .replace(/[^a-zA-Z0-9]/g, '')
         .toUpperCase()
         .slice(0, 4);
-      if (isValidCode(cleaned)) {
-        setCode(cleaned);
-        setPasteHint(true);
-        setTimeout(() => setPasteHint(false), 2000);
-      }
+      if (!isValidCode(cleaned)) return;
+
+      // eslint-disable-next-line no-restricted-globals
+      const confirmed = confirm(`Colar o código "${cleaned}" da área de transferência?`);
+      if (!confirmed) return;
+
+      setCode(cleaned);
+      setPasteHint(true);
+      setTimeout(() => setPasteHint(false), 2000);
     } catch {
       // Permissão negada ou clipboard vazio — não faz nada
     }
@@ -214,8 +219,6 @@ export default function Home() {
               placeholder="Código da sala"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
-              onFocus={tryPasteFromClipboard}
-              onClick={tryPasteFromClipboard}
               maxLength={4}
               className={`w-full px-4 py-3 rounded-xl text-center text-lg font-bold tracking-widest focus:outline-none transition-colors pr-10 ${
                 isExtreme

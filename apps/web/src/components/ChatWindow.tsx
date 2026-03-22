@@ -453,15 +453,36 @@ export default function ChatWindow({
     [onOpenChange]
   );
 
+  // rola ao fim quando chegam novas mensagens
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!isMinimized) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isMinimized]);
+
+  // rola ao fim ao expandir o chat
+  useEffect(() => {
+    if (!isMinimized) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      }, 0);
+    }
+  }, [isMinimized]);
 
   useEffect(() => {
     if (isOpen && !isMinimized) {
       inputRef.current?.focus();
     }
   }, [isOpen, isMinimized]);
+
+  const handleMinimize = useCallback(() => {
+    setIsMinimized((prev) => {
+      const next = !prev;
+      // fecha o picker ao minimizar
+      if (next) setShowEmojis(false);
+      return next;
+    });
+  }, []);
 
   const handleDragStart = useCallback(
     (e: React.MouseEvent) => {
@@ -546,7 +567,7 @@ export default function ChatWindow({
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setIsMinimized((prev) => !prev)}
+            onClick={handleMinimize}
             className="text-white opacity-70 hover:opacity-100 transition-opacity p-1 rounded"
             title={isMinimized ? 'Expandir' : 'Minimizar'}
           >
@@ -589,7 +610,6 @@ export default function ChatWindow({
 
           {/* Input */}
           <div className="relative flex items-center gap-2 px-3 py-2 border-t border-[#f0d6eb] bg-white">
-            {/* Picker flutuando por cima, abaixo do botão de emoji */}
             {showEmojis && (
               <div className="absolute bottom-full left-0 right-0 bg-white border border-[#e9b8d9] rounded-t-2xl shadow-xl z-10 overflow-hidden">
                 <div className="flex overflow-x-auto border-b border-[#f0d6eb] px-1 pt-1 gap-0.5">

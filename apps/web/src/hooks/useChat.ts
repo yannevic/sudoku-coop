@@ -17,6 +17,8 @@ export default function useChat(
   const [unreadCount, setUnreadCount] = useState(0);
   const isOpenRef = useRef(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  // guarda os IDs das mensagens enviadas por este cliente para não duplicar
+  const sentIdsRef = useRef<Set<string>>(new Set());
 
   const playSound = useCallback(() => {
     const ctx = new AudioContext();
@@ -62,6 +64,8 @@ export default function useChat(
         timestamp: Date.now(),
       };
 
+      sentIdsRef.current.add(msg.id);
+
       channelRef.current?.send({
         type: 'broadcast',
         event: 'chat',
@@ -85,6 +89,8 @@ export default function useChat(
         type: 'system',
         timestamp: Date.now(),
       };
+
+      sentIdsRef.current.add(msg.id);
 
       channelRef.current?.send({
         type: 'broadcast',
@@ -111,6 +117,8 @@ export default function useChat(
       timestamp: Date.now(),
     };
 
+    sentIdsRef.current.add(msg.id);
+
     channelRef.current?.send({
       type: 'broadcast',
       event: 'chat',
@@ -131,6 +139,9 @@ export default function useChat(
     const channel = supabase
       .channel(`room-${roomId}-chat`)
       .on('broadcast', { event: 'chat' }, ({ payload }: { payload: ChatMessage }) => {
+        // ignora mensagens enviadas por este cliente (evita duplicata)
+        if (sentIdsRef.current.has(payload.id)) return;
+
         addMessage(payload, false);
         if (payload.type === 'system' && payload.text.includes('entrou na sala') && onPlayerJoin) {
           const match = payload.text.match(/🎮 (.+) entrou na sala!/);

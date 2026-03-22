@@ -23,6 +23,19 @@ function isBoardComplete(
   );
 }
 
+// Uma célula só pode ser editada se ainda não estiver correta na solução
+function isCellLocked(
+  current: CurrentBoard,
+  solution: (number | null)[][],
+  puzzle: (number | null)[][],
+  r: number,
+  c: number
+): boolean {
+  if (puzzle[r][c] !== null) return true;
+  const cell = current[r][c];
+  return cell !== null && cell.value === solution[r][c];
+}
+
 interface Particle {
   id: number;
   left: number;
@@ -99,7 +112,9 @@ export default function Game() {
 
       if (!selected || !roomState) return;
       const [r, c] = selected;
-      if (roomState.puzzle[r][c] !== null) return;
+
+      // não permite editar fixos nem células já corretas
+      if (isCellLocked(roomState.current, roomState.solution, roomState.puzzle, r, c)) return;
 
       const num = parseInt(e.key, 10);
 
@@ -323,7 +338,8 @@ export default function Game() {
             onClick={() => {
               if (!selected || !roomState) return;
               const [r, c] = selected;
-              if (roomState.puzzle[r][c] !== null) return;
+              if (isCellLocked(roomState.current, roomState.solution, roomState.puzzle, r, c))
+                return;
               if (isNoteMode) {
                 const nextNotes: Notes = roomState.notes.map((row) =>
                   row.map((cell) => new Set(cell))
@@ -365,7 +381,7 @@ export default function Game() {
         onClick={() => {
           if (!selected || !roomState) return;
           const [r, c] = selected;
-          if (roomState.puzzle[r][c] !== null) return;
+          if (isCellLocked(roomState.current, roomState.solution, roomState.puzzle, r, c)) return;
           const nextCurrent: CurrentBoard = roomState.current.map((row) =>
             row.map((cell) => (cell ? { ...cell } : null))
           );

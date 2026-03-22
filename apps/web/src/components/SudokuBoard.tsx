@@ -12,6 +12,30 @@ interface SudokuBoardProps {
   onSelect: (row: number, col: number) => void;
 }
 
+function getBadgeStyle(done: boolean, isExtreme: boolean): string {
+  if (done && isExtreme) return 'bg-[#1a0505] text-[#3a1010] border border-[#2a0808]';
+  if (done) return 'bg-[#ddb8ea] text-[#b088ba] border border-[#c9a0d0]';
+  if (isExtreme) return 'bg-[#1a1a1a] text-[#ef4444] border border-[#2a2a2a]';
+  return 'bg-[#fce4f3] text-[#9b5fa5] border border-[#e9b8d9]';
+}
+
+function getCompletedNumbers(puzzle: Board, current: CurrentBoard, solution: Board): Set<number> {
+  const completed = new Set<number>();
+  [1, 2, 3, 4, 5, 6, 7, 8, 9].forEach((num) => {
+    let count = 0;
+    for (let r = 0; r < 9; r += 1) {
+      for (let c = 0; c < 9; c += 1) {
+        const value = puzzle[r][c] !== null ? puzzle[r][c] : (current[r][c]?.value ?? null);
+        if (value === num && value === solution[r][c]) {
+          count += 1;
+        }
+      }
+    }
+    if (count === 9) completed.add(num);
+  });
+  return completed;
+}
+
 export default function SudokuBoard({
   puzzle,
   current,
@@ -56,30 +80,55 @@ export default function SudokuBoard({
     return getValue(row, col) === selectedValue;
   };
 
+  const completedNumbers = getCompletedNumbers(puzzle, current, solution);
   const boardBorder = isExtreme ? 'border-[#dc2626]' : 'border-[#9b5fa5]';
 
   return (
-    <div className={`inline-grid grid-cols-9 border-2 ${boardBorder}`}>
-      {current.flatMap((row, r) =>
-        row.map((cell, c) => (
-          <SudokuCell
-            key={`cell-${r * 9 + c}`}
-            value={getValue(r, c)}
-            player={cell?.player ?? null}
-            notes={notes[r][c]}
-            isFixed={puzzle[r][c] !== null}
-            isSelected={selected?.[0] === r && selected?.[1] === c}
-            isHighlighted={isHighlighted(r, c)}
-            isSameNumber={isSameNumber(r, c)}
-            isError={isError(r, c)}
-            isNoteMode={isNoteMode}
-            isExtreme={isExtreme}
-            row={r}
-            col={c}
-            onClick={onSelect}
-          />
-        ))
-      )}
+    <div className="flex items-stretch gap-2">
+      <div className={`inline-grid grid-cols-9 border-2 ${boardBorder}`}>
+        {current.flatMap((row, r) =>
+          row.map((cell, c) => (
+            <SudokuCell
+              key={`cell-${r * 9 + c}`}
+              value={getValue(r, c)}
+              player={cell?.player ?? null}
+              notes={notes[r][c]}
+              isFixed={puzzle[r][c] !== null}
+              isSelected={selected?.[0] === r && selected?.[1] === c}
+              isHighlighted={isHighlighted(r, c)}
+              isSameNumber={isSameNumber(r, c)}
+              isError={isError(r, c)}
+              isNoteMode={isNoteMode}
+              isExtreme={isExtreme}
+              row={r}
+              col={c}
+              onClick={onSelect}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Badges de números completos */}
+      <div className="flex flex-col justify-between py-0.5">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => {
+          const done = completedNumbers.has(num);
+          return (
+            <div
+              key={num}
+              title={done ? `${num} completo!` : `${num}`}
+              className={`
+                w-5 h-5 sm:w-6 sm:h-6
+                flex items-center justify-center
+                rounded-full text-[10px] sm:text-xs font-bold
+                transition-all duration-300
+                ${getBadgeStyle(done, isExtreme)}
+              `}
+            >
+              {num}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

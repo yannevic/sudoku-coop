@@ -469,6 +469,15 @@ export default function ChatWindow({
     }
   }, [isMinimized]);
 
+  // rola ao fim ao reabrir o chat
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      }, 0);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen && !isMinimized) {
       inputRef.current?.focus();

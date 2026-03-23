@@ -192,6 +192,7 @@ export default function Game() {
   const [showVictory, setShowVictory] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [joinerName, setJoinerName] = useState('');
+  const [opponentName, setOpponentName] = useState('');
 
   const player = roomState?.player ?? null;
   const playerCount = roomState?.playerCount ?? 1;
@@ -200,12 +201,22 @@ export default function Game() {
   const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
     useChat(roomId, player, playerName, (name) => setJoinerName(name));
 
-  const { opponentSelected, broadcastSelection } = usePresence(roomId, player);
+  const { opponentSelected, broadcastSelection, broadcastName } = usePresence(
+    roomId,
+    player,
+    playerName,
+    (name) => {
+      setOpponentName(name);
+      if (player === 'creator') setJoinerName(name);
+    }
+  );
 
   const { seconds, formatted, isRunning, unlockedSolo, unlockSolo } = useTimer(
     playerCount >= 2,
     showVictory
   );
+
+  const displayName = playerName.trim() || 'Anônimo';
 
   const hasAnnouncedRef = useRef(false);
   const showVictoryRef = useRef(false);
@@ -219,7 +230,16 @@ export default function Game() {
     if (!roomState || hasAnnouncedRef.current) return;
     hasAnnouncedRef.current = true;
     announceJoin();
-  }, [roomState, announceJoin]);
+    // anuncia o próprio nome para o oponente assim que entra
+    broadcastName();
+  }, [roomState, announceJoin, broadcastName]);
+
+  // quando o segundo jogador entra, o creator anuncia o nome de volta
+  useEffect(() => {
+    if (playerCount >= 2 && player === 'creator') {
+      broadcastName();
+    }
+  }, [playerCount, player, broadcastName]);
 
   useEffect(() => {
     if (!roomState || showVictoryRef.current) return;
@@ -301,6 +321,20 @@ export default function Game() {
     };
   }, [handleKeyDown]);
 
+  // envia mensagem de saída ao fechar/recarregar a aba
+  useEffect(() => {
+    if (!roomId) return undefined;
+
+    const handleBeforeUnload = () => {
+      sendSystemMessage(`👋 ${displayName} saiu da sala.`);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [roomId, displayName, sendSystemMessage]);
+
   // handler mobile com limpeza de notas ao acertar
   const handleMobileNum = useCallback(
     (num: number) => {
@@ -337,11 +371,9 @@ export default function Game() {
   );
 
   if (!roomState) return null;
-
-  const displayName = playerName.trim() || 'Anônimo';
   const waitingForPlayer = playerCount < 2 && !unlockedSolo;
-  const creatorName = player === 'creator' ? displayName : joinerName || 'Anônimo';
-  const joinerDisplayName = player === 'joiner' ? displayName : joinerName;
+  const creatorName = player === 'creator' ? displayName : opponentName || joinerName || 'Anônimo';
+  const joinerDisplayName = player === 'joiner' ? displayName : joinerName || opponentName;
 
   const resetAndLeave = () => {
     setShowVictory(false);

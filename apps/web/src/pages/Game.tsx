@@ -190,8 +190,18 @@ const DIFFICULTY_LABEL: Record<string, string> = {
 
 export default function Game() {
   const navigate = useNavigate();
-  const { roomId, roomState, playerName, updateRoom, setRoomState, leaveRoom, isDark, toggleDark } =
-    useRoomContext();
+  const {
+    roomId,
+    roomState,
+    playerName,
+    updateRoom,
+    setRoomState,
+    leaveRoom,
+    isDark,
+    toggleDark,
+    decrementPlayerCount,
+    markRoomFinished,
+  } = useRoomContext();
   const [selected, setSelected] = useState<[number, number] | null>(null);
   const [isNoteMode, setIsNoteMode] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -253,8 +263,9 @@ export default function Game() {
     if (isBoardComplete(roomState.current, roomState.solution, roomState.puzzle)) {
       showVictoryRef.current = true;
       setShowVictory(true);
+      markRoomFinished();
     }
-  }, [roomState]);
+  }, [roomState, markRoomFinished]);
 
   const handleSelect = useCallback(
     (row: number, col: number) => {
@@ -336,13 +347,14 @@ export default function Game() {
 
     const handleBeforeUnload = () => {
       sendSystemMessage(`👋 ${displayName} saiu da sala.`);
+      decrementPlayerCount();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [roomId, displayName, sendSystemMessage]);
+  }, [roomId, displayName, sendSystemMessage, decrementPlayerCount]);
 
   // handler mobile com limpeza de notas ao acertar
   const handleMobileNum = useCallback(
@@ -391,6 +403,7 @@ export default function Game() {
     setShowLeaderboard(false);
     showVictoryRef.current = false;
     hasAnnouncedRef.current = false;
+    decrementPlayerCount();
     leaveRoom();
     navigate('/');
   };

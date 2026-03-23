@@ -17,23 +17,18 @@ export default function useChat(
   const [unreadCount, setUnreadCount] = useState(0);
   const isOpenRef = useRef(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  // guarda os IDs das mensagens enviadas por este cliente para não duplicar
   const sentIdsRef = useRef<Set<string>>(new Set());
 
   const playSound = useCallback(() => {
     const ctx = new AudioContext();
     const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
-
     oscillator.connect(gain);
     gain.connect(ctx.destination);
-
     oscillator.frequency.setValueAtTime(880, ctx.currentTime);
     oscillator.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.08);
-
     gain.gain.setValueAtTime(0.08, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
-
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.18);
   }, []);
@@ -54,7 +49,6 @@ export default function useChat(
   const sendMessage = useCallback(
     (text: string) => {
       if (!roomId || !player || !text.trim()) return;
-
       const msg: ChatMessage = {
         id: generateId(),
         text: text.trim(),
@@ -63,15 +57,12 @@ export default function useChat(
         type: 'user',
         timestamp: Date.now(),
       };
-
       sentIdsRef.current.add(msg.id);
-
       channelRef.current?.send({
         type: 'broadcast',
         event: 'chat',
         payload: msg,
       });
-
       addMessage(msg, true);
     },
     [roomId, player, playerName, addMessage]
@@ -80,7 +71,6 @@ export default function useChat(
   const sendSystemMessage = useCallback(
     (text: string) => {
       if (!roomId) return;
-
       const msg: ChatMessage = {
         id: generateId(),
         text,
@@ -89,15 +79,12 @@ export default function useChat(
         type: 'system',
         timestamp: Date.now(),
       };
-
       sentIdsRef.current.add(msg.id);
-
       channelRef.current?.send({
         type: 'broadcast',
         event: 'chat',
         payload: msg,
       });
-
       addMessage(msg, true);
     },
     [roomId, addMessage]
@@ -105,9 +92,7 @@ export default function useChat(
 
   const announceJoin = useCallback(() => {
     if (!roomId || !player) return;
-
     const name = playerName || 'Anônimo';
-
     const msg: ChatMessage = {
       id: generateId(),
       text: `🎮 ${name} entrou na sala!`,
@@ -116,15 +101,12 @@ export default function useChat(
       type: 'system',
       timestamp: Date.now(),
     };
-
     sentIdsRef.current.add(msg.id);
-
     channelRef.current?.send({
       type: 'broadcast',
       event: 'chat',
       payload: msg,
     });
-
     addMessage(msg, true);
   }, [roomId, player, playerName, addMessage]);
 
@@ -139,9 +121,7 @@ export default function useChat(
     const channel = supabase
       .channel(`room-${roomId}-chat`)
       .on('broadcast', { event: 'chat' }, ({ payload }: { payload: ChatMessage }) => {
-        // ignora mensagens enviadas por este cliente (evita duplicata)
         if (sentIdsRef.current.has(payload.id)) return;
-
         addMessage(payload, false);
         if (payload.type === 'system' && payload.text.includes('entrou na sala') && onPlayerJoin) {
           const match = payload.text.match(/🎮 (.+) entrou na sala!/);
@@ -156,7 +136,14 @@ export default function useChat(
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [roomId, addMessage, onPlayerJoin]);
+  }, [roomId, addMessage, onPlayerJoin, player]);
 
-  return { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen };
+  return {
+    messages,
+    sendMessage,
+    sendSystemMessage,
+    announceJoin,
+    unreadCount,
+    setIsOpen,
+  };
 }

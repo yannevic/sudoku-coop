@@ -35,6 +35,8 @@ interface RoomContextType {
   setRoomState: (state: RoomState) => void;
   setPlayerName: (name: string) => void;
   leaveRoom: () => void;
+  decrementPlayerCount: () => Promise<void>;
+  markRoomFinished: () => Promise<void>;
 }
 
 const RoomContext = createContext<RoomContextType | null>(null);
@@ -76,6 +78,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       notes: notes.map((row) => row.map((cell) => Array.from(cell))),
       difficulty,
       player_count: 1,
+      finished: false,
     });
 
     if (err) {
@@ -113,6 +116,12 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (data.finished) {
+      setError('Esta sala já terminou. Crie uma nova!');
+      setLoading(false);
+      return;
+    }
+
     const notes: Notes = (data.notes as number[][][]).map((row) =>
       row.map((cell) => new Set(cell))
     );
@@ -135,7 +144,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const updateRoom = useCallback(
     async (current: CurrentBoard, notes: Notes) => {
       if (!roomId) return;
-
       await supabase
         .from('rooms')
         .update({
@@ -146,6 +154,17 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     },
     [roomId]
   );
+
+  const decrementPlayerCount = useCallback(async () => {
+    if (!roomId || !roomState) return;
+    const next = Math.max(0, roomState.playerCount - 1);
+    await supabase.from('rooms').update({ player_count: next }).eq('id', roomId);
+  }, [roomId, roomState]);
+
+  const markRoomFinished = useCallback(async () => {
+    if (!roomId) return;
+    await supabase.from('rooms').update({ finished: true }).eq('id', roomId);
+  }, [roomId]);
 
   const leaveRoom = useCallback(() => {
     setRoomId(null);
@@ -199,6 +218,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       setRoomState,
       setPlayerName,
       leaveRoom,
+      decrementPlayerCount,
+      markRoomFinished,
     }),
     [
       roomId,
@@ -212,6 +233,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       joinRoom,
       updateRoom,
       leaveRoom,
+      decrementPlayerCount,
+      markRoomFinished,
     ]
   );
 

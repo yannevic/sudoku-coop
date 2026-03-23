@@ -89,7 +89,6 @@ export default function Home() {
   } = useRoomContext();
   const [code, setCode] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [pasteHint, setPasteHint] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
@@ -117,22 +116,12 @@ export default function Home() {
         .toUpperCase()
         .slice(0, 4);
       if (!isValidCode(cleaned)) return;
-      setPendingCode(cleaned);
+      setCode(cleaned);
+      setPasteHint(true);
+      setTimeout(() => setPasteHint(false), 2000);
     } catch {
       // Permissão negada ou clipboard vazio — não faz nada
     }
-  }, []);
-
-  const confirmPaste = useCallback(() => {
-    if (!pendingCode) return;
-    setCode(pendingCode);
-    setPendingCode(null);
-    setPasteHint(true);
-    setTimeout(() => setPasteHint(false), 2000);
-  }, [pendingCode]);
-
-  const dismissPaste = useCallback(() => {
-    setPendingCode(null);
   }, []);
 
   const isNameValid = playerName.trim().length > 0;
@@ -395,28 +384,7 @@ export default function Home() {
             >
               <ClipboardPaste size={16} />
             </button>
-            {pendingCode && (
-              <div
-                className={`absolute -bottom-8 left-0 right-0 flex items-center justify-center gap-2 text-[10px] font-medium ${getPasteHintColor()}`}
-              >
-                <span>Colar &ldquo;{pendingCode}&rdquo;?</span>
-                <button
-                  type="button"
-                  onClick={confirmPaste}
-                  className="underline underline-offset-2 font-bold"
-                >
-                  Sim
-                </button>
-                <button
-                  type="button"
-                  onClick={dismissPaste}
-                  className="underline underline-offset-2 opacity-60"
-                >
-                  Não
-                </button>
-              </div>
-            )}
-            {!pendingCode && pasteHint && (
+            {pasteHint && (
               <span
                 className={`absolute -bottom-5 left-0 right-0 text-center text-[10px] font-medium ${getPasteHintColor()}`}
               >

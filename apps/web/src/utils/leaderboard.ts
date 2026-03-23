@@ -4,6 +4,7 @@ export interface LeaderboardEntry {
   id: string;
   duo_name: string;
   time_seconds: number;
+  error_count: number;
   difficulty: string;
   created_at: string;
 }
@@ -11,17 +12,18 @@ export interface LeaderboardEntry {
 export async function saveToLeaderboard(
   duoName: string,
   timeSeconds: number,
-  difficulty: string
+  difficulty: string,
+  errorCount: number
 ): Promise<void> {
   if (!import.meta.env.PROD) return;
 
   const { error } = await supabase
     .from('leaderboard')
-    .insert({ duo_name: duoName, time_seconds: timeSeconds, difficulty });
+    .insert({ duo_name: duoName, time_seconds: timeSeconds, difficulty, error_count: errorCount });
   // eslint-disable-next-line no-console
   if (error) console.error('[leaderboard] erro ao salvar:', error);
   // eslint-disable-next-line no-console
-  else console.log('[leaderboard] salvo:', { duoName, timeSeconds, difficulty });
+  else console.log('[leaderboard] salvo:', { duoName, timeSeconds, difficulty, errorCount });
 }
 
 export async function fetchLeaderboard(difficulty?: string): Promise<LeaderboardEntry[]> {

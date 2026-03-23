@@ -5,6 +5,7 @@ import type { Difficulty } from '../utils/sudoku';
 
 interface VictoryModalProps {
   timeSeconds: number;
+  errorCount: number;
   difficulty: Difficulty;
   creatorName: string;
   joinerName: string;
@@ -15,6 +16,7 @@ interface VictoryModalProps {
 
 export default function VictoryModal({
   timeSeconds,
+  errorCount,
   difficulty,
   creatorName,
   joinerName,
@@ -28,8 +30,8 @@ export default function VictoryModal({
   useEffect(() => {
     if (!isCreator || savedRef.current) return;
     savedRef.current = true;
-    saveToLeaderboard(duoName, timeSeconds, difficulty);
-  }, [duoName, timeSeconds, difficulty, isCreator]);
+    saveToLeaderboard(duoName, timeSeconds, difficulty, errorCount);
+  }, [duoName, timeSeconds, difficulty, isCreator, errorCount]);
 
   const difficultyLabel: Record<Difficulty, string> = {
     easy: 'Fácil',
@@ -69,7 +71,7 @@ export default function VictoryModal({
             <p className="text-[#7a4a84] font-bold text-base leading-snug">{duoName}</p>
           </div>
 
-          {/* Tempo e dificuldade */}
+          {/* Tempo, dificuldade e erros */}
           <div className="flex gap-3">
             <div className="flex-1 bg-[#fdf6fb] rounded-2xl px-4 py-3 text-center">
               <p className="text-[10px] text-[#c9a0d0] uppercase font-semibold tracking-widest mb-1">
@@ -84,6 +86,16 @@ export default function VictoryModal({
                 Nível
               </p>
               <p className="font-bold text-[#9b5fa5] text-xl">{difficultyLabel[difficulty]}</p>
+            </div>
+            <div className="flex-1 bg-[#fdf6fb] rounded-2xl px-4 py-3 text-center">
+              <p className="text-[10px] text-[#c9a0d0] uppercase font-semibold tracking-widest mb-1">
+                Erros
+              </p>
+              <p
+                className={`font-bold text-xl ${errorCount === 0 ? 'text-[#9b5fa5]' : 'text-red-400'}`}
+              >
+                {errorCount}
+              </p>
             </div>
           </div>
 

@@ -41,6 +41,11 @@ function getEntryBg(isFirst: boolean, isExtreme: boolean): string {
   return 'bg-[#fdf6fb]';
 }
 
+function getErrorColor(errorCount: number, isExtreme: boolean): string {
+  if (errorCount === 0) return isExtreme ? 'text-[#f97316]' : 'text-[#9b5fa5]';
+  return 'text-red-400';
+}
+
 export default function LeaderboardModal({
   onClose,
   onBack,
@@ -180,11 +185,20 @@ export default function LeaderboardModal({
                     {new Date(entry.created_at).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
-                <span
-                  className={`font-mono font-bold text-sm shrink-0 ${isExtreme ? 'text-[#dc2626]' : 'text-[#9b5fa5]'}`}
-                >
-                  {formatTime(entry.time_seconds)}
-                </span>
+                <div className="flex flex-col items-end gap-0.5 shrink-0">
+                  <span
+                    className={`font-mono font-bold text-sm ${isExtreme ? 'text-[#dc2626]' : 'text-[#9b5fa5]'}`}
+                  >
+                    {formatTime(entry.time_seconds)}
+                  </span>
+                  <span
+                    className={`text-[10px] font-medium ${getErrorColor(entry.error_count, isExtreme)}`}
+                  >
+                    {entry.error_count === 0
+                      ? '0 erros ✓'
+                      : `${entry.error_count} erro${entry.error_count > 1 ? 's' : ''}`}
+                  </span>
+                </div>
               </div>
             ))}
         </div>

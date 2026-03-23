@@ -169,6 +169,12 @@ function getMobileNumButtonStyle(isExtreme: boolean, isDark: boolean): string {
   return 'bg-white text-[#9b5fa5] border border-[#e9b8d9] active:bg-[#f37eb9] active:text-white';
 }
 
+function getErrorCountColor(errorCount: number, isExtreme: boolean, isDark: boolean): string {
+  if (errorCount > 0 && isExtreme) return 'text-[#ef4444]';
+  if (errorCount > 0) return 'text-red-400';
+  return getLabelColor(isExtreme, isDark);
+}
+
 function getMobileDeleteStyle(isExtreme: boolean, isDark: boolean): string {
   if (isExtreme) return 'bg-[#1a1a1a] text-[#9a3030] border border-[#dc2626]/20';
   if (isDark) return 'bg-[#16213e] text-[#44446a] border border-[#2a2a4a]';
@@ -192,6 +198,7 @@ export default function Game() {
   const [showVictory, setShowVictory] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [joinerName, setJoinerName] = useState('');
+  const [errorCount, setErrorCount] = useState(0);
   const [opponentName, setOpponentName] = useState('');
 
   const player = roomState?.player ?? null;
@@ -293,6 +300,8 @@ export default function Game() {
           nextNotes[r][c].clear();
           if (num === roomState.solution[r][c]) {
             nextNotes = clearNotesForCorrectCell(nextNotes, r, c, num);
+          } else {
+            setErrorCount((prev) => prev + 1);
           }
 
           setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
@@ -361,6 +370,8 @@ export default function Game() {
         nextNotes[r][c].clear();
         if (num === roomState.solution[r][c]) {
           nextNotes = clearNotesForCorrectCell(nextNotes, r, c, num);
+        } else {
+          setErrorCount((prev) => prev + 1);
         }
 
         setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
@@ -433,23 +444,29 @@ export default function Game() {
         {isExtreme ? '💀 Sudoku Extremo' : 'Sudoku Coop 🌸'}
       </h1>
 
-      {/* Dificuldade + players */}
-      <div className="flex items-center gap-3 relative z-10">
+      {/* Info bar: dificuldade, players, erros */}
+      <div
+        className={`flex items-center gap-2 px-4 py-2 rounded-2xl relative z-10 ${getBarBg(isExtreme, isDark)} shadow-sm`}
+      >
         <span
-          className={`text-xs font-semibold tracking-widest uppercase ${getLabelColor(isExtreme, isDark)}`}
+          className={`text-xs font-bold tracking-widest uppercase ${getLabelColor(isExtreme, isDark)}`}
         >
           {DIFFICULTY_LABEL[roomState.difficulty]}
         </span>
         <div className={`w-px h-3 ${getBarDividerColor(isExtreme, isDark)}`} />
-        <div className="flex items-center gap-1.5">
-          <span className={`text-xs font-bold ${getPlayerNameColor('creator', isExtreme)}`}>
-            {creatorName}
-          </span>
-          <span className={`text-xs ${getLabelColor(isExtreme, isDark)}`}>×</span>
-          <span className={`text-xs font-bold ${getPlayerNameColor('joiner', isExtreme)}`}>
-            {joinerDisplayName || '...'}
-          </span>
-        </div>
+        <span className={`text-xs font-bold ${getPlayerNameColor('creator', isExtreme)}`}>
+          {creatorName}
+        </span>
+        <span className={`text-xs ${getLabelColor(isExtreme, isDark)}`}>×</span>
+        <span className={`text-xs font-bold ${getPlayerNameColor('joiner', isExtreme)}`}>
+          {joinerDisplayName || '...'}
+        </span>
+        <div className={`w-px h-3 ${getBarDividerColor(isExtreme, isDark)}`} />
+        <span
+          className={`text-xs font-bold tabular-nums ${getErrorCountColor(errorCount, isExtreme, isDark)}`}
+        >
+          {errorCount === 0 ? '0 erros' : `${errorCount} erro${errorCount > 1 ? 's' : ''}`}
+        </span>
       </div>
 
       {/* Barra superior */}
@@ -642,6 +659,7 @@ export default function Game() {
           difficulty={roomState.difficulty}
           creatorName={creatorName}
           joinerName={joinerDisplayName}
+          errorCount={errorCount}
           isCreator={player === 'creator'}
           onLeave={handleLeave}
           onShowLeaderboard={() => {

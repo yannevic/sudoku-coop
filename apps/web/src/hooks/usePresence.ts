@@ -21,6 +21,12 @@ export default function usePresence(
 ) {
   const [opponentSelected, setOpponentSelected] = useState<[number, number] | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const playerNameRef = useRef(playerName);
+
+  // mantém ref atualizada sem recriar o canal
+  useEffect(() => {
+    playerNameRef.current = playerName;
+  }, [playerName]);
 
   const broadcastSelection = useCallback(
     (row: number | null, col: number | null) => {
@@ -34,16 +40,14 @@ export default function usePresence(
     [player]
   );
 
-  // anuncia o próprio nome para o oponente (usado pelo creator quando joiner entra,
-  // e pelo joiner assim que o canal está pronto)
   const broadcastName = useCallback(() => {
-    if (!player || !playerName) return;
+    if (!player || !playerNameRef.current) return;
     channelRef.current?.send({
       type: 'broadcast',
       event: 'player-name',
-      payload: { player, name: playerName } satisfies NamePayload,
+      payload: { player, name: playerNameRef.current } satisfies NamePayload,
     });
-  }, [player, playerName]);
+  }, [player]);
 
   useEffect(() => {
     if (!roomId || !player) return undefined;
@@ -61,14 +65,23 @@ export default function usePresence(
       .on('broadcast', { event: 'player-name' }, ({ payload }: { payload: NamePayload }) => {
         if (payload.player === player) return;
         onOpponentName?.(payload.name);
-        // responde com o próprio nome para garantir que o outro lado também saiba
-        channelRef.current?.send({
+        // responde com o próprio nome para garantir troca bidirecional
+        channel.send({
           type: 'broadcast',
           event: 'player-name',
-          payload: { player, name: playerName } satisfies NamePayload,
+          payload: { player, name: playerNameRef.current } satisfies NamePayload,
         });
       })
-      .subscribe();
+      .subscribe((status) => {
+        // assim que o canal estiver pronto, anuncia o próprio nome
+        if (status === 'SUBSCRIBED') {
+          channel.send({
+            type: 'broadcast',
+            event: 'player-name',
+            payload: { player, name: playerNameRef.current } satisfies NamePayload,
+          });
+        }
+      });
 
     channelRef.current = channel;
 
@@ -76,7 +89,7 @@ export default function usePresence(
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [roomId, player, playerName, onOpponentName]);
+  }, [roomId, player, onOpponentName]);
 
   return { opponentSelected, broadcastSelection, broadcastName };
 }

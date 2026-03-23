@@ -8,6 +8,7 @@ import LeaderboardModal from '../components/LeaderboardModal';
 import { useRoomContext } from '../context/RoomContext';
 import useChat from '../hooks/useChat';
 import useTimer from '../hooks/useTimer';
+import usePresence from '../hooks/usePresence';
 import type { CurrentBoard, Notes } from '../utils/sudoku';
 
 function isBoardComplete(
@@ -33,6 +34,27 @@ function isCellLocked(
   if (puzzle[r][c] !== null) return true;
   const cell = current[r][c];
   return cell !== null && cell.value === solution[r][c];
+}
+
+// Ao confirmar um número correto em [r,c], limpa esse número das notas
+// de todas as células na mesma linha, coluna e quadrante
+function clearNotesForCorrectCell(notes: Notes, r: number, c: number, num: number): Notes {
+  const next: Notes = notes.map((row) => row.map((cell) => new Set(cell)));
+  const boxR = Math.floor(r / 3) * 3;
+  const boxC = Math.floor(c / 3) * 3;
+
+  for (let i = 0; i < 9; i += 1) {
+    next[r][i].delete(num); // mesma linha
+    next[i][c].delete(num); // mesma coluna
+  }
+
+  for (let dr = 0; dr < 3; dr += 1) {
+    for (let dc = 0; dc < 3; dc += 1) {
+      next[boxR + dr][boxC + dc].delete(num); // mesmo quadrante
+    }
+  }
+
+  return next;
 }
 
 interface Particle {
@@ -171,6 +193,8 @@ export default function Game() {
   const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
     useChat(roomId, player, playerName, (name) => setJoinerName(name));
 
+  const { opponentSelected, broadcastSelection } = usePresence(roomId, player);
+
   const { seconds, formatted, isRunning, unlockedSolo, unlockSolo } = useTimer(
     playerCount >= 2,
     showVictory
@@ -198,9 +222,13 @@ export default function Game() {
     }
   }, [roomState]);
 
-  const handleSelect = (row: number, col: number) => {
-    setSelected([row, col]);
-  };
+  const handleSelect = useCallback(
+    (row: number, col: number) => {
+      setSelected([row, col]);
+      broadcastSelection(row, col);
+    },
+    [broadcastSelection]
+  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -232,8 +260,14 @@ export default function Game() {
             row.map((cell) => (cell ? { ...cell } : null))
           );
           nextCurrent[r][c] = { value: num, player: roomState.player };
-          const nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
+
+          // se o número colocado for correto, limpa as notas da linha/coluna/quadrante
+          let nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
           nextNotes[r][c].clear();
+          if (num === roomState.solution[r][c]) {
+            nextNotes = clearNotesForCorrectCell(nextNotes, r, c, num);
+          }
+
           setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
           updateRoom(nextCurrent, nextNotes);
         }
@@ -259,6 +293,41 @@ export default function Game() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleKeyDown]);
+
+  // handler mobile com limpeza de notas ao acertar
+  const handleMobileNum = useCallback(
+    (num: number) => {
+      if (!selected || !roomState) return;
+      const [r, c] = selected;
+      if (isCellLocked(roomState.current, roomState.solution, roomState.puzzle, r, c)) return;
+
+      if (isNoteMode) {
+        const nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
+        if (nextNotes[r][c].has(num)) {
+          nextNotes[r][c].delete(num);
+        } else {
+          nextNotes[r][c].add(num);
+        }
+        setRoomState({ ...roomState, notes: nextNotes });
+        updateRoom(roomState.current, nextNotes);
+      } else {
+        const nextCurrent: CurrentBoard = roomState.current.map((row) =>
+          row.map((cell) => (cell ? { ...cell } : null))
+        );
+        nextCurrent[r][c] = { value: num, player: roomState.player };
+
+        let nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
+        nextNotes[r][c].clear();
+        if (num === roomState.solution[r][c]) {
+          nextNotes = clearNotesForCorrectCell(nextNotes, r, c, num);
+        }
+
+        setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
+        updateRoom(nextCurrent, nextNotes);
+      }
+    },
+    [selected, roomState, isNoteMode, updateRoom, setRoomState]
+  );
 
   if (!roomState) return null;
 
@@ -416,6 +485,7 @@ export default function Game() {
           current={roomState.current}
           solution={roomState.solution}
           selected={selected}
+          opponentSelected={opponentSelected}
           notes={roomState.notes}
           isNoteMode={isNoteMode}
           isExtreme={isExtreme}
@@ -429,35 +499,7 @@ export default function Game() {
           <button
             key={num}
             type="button"
-            onClick={() => {
-              if (!selected || !roomState) return;
-              const [r, c] = selected;
-              if (isCellLocked(roomState.current, roomState.solution, roomState.puzzle, r, c))
-                return;
-              if (isNoteMode) {
-                const nextNotes: Notes = roomState.notes.map((row) =>
-                  row.map((cell) => new Set(cell))
-                );
-                if (nextNotes[r][c].has(num)) {
-                  nextNotes[r][c].delete(num);
-                } else {
-                  nextNotes[r][c].add(num);
-                }
-                setRoomState({ ...roomState, notes: nextNotes });
-                updateRoom(roomState.current, nextNotes);
-              } else {
-                const nextCurrent: CurrentBoard = roomState.current.map((row) =>
-                  row.map((cell) => (cell ? { ...cell } : null))
-                );
-                nextCurrent[r][c] = { value: num, player: roomState.player };
-                const nextNotes: Notes = roomState.notes.map((row) =>
-                  row.map((cell) => new Set(cell))
-                );
-                nextNotes[r][c].clear();
-                setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
-                updateRoom(nextCurrent, nextNotes);
-              }
-            }}
+            onClick={() => handleMobileNum(num)}
             className={`h-8 rounded text-sm font-bold transition-colors ${getMobileNumButtonStyle(isExtreme, isDark)}`}
           >
             {num}

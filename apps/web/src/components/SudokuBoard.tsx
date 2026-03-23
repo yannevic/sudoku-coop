@@ -6,6 +6,7 @@ interface SudokuBoardProps {
   current: CurrentBoard;
   solution: Board;
   selected: [number, number] | null;
+  opponentSelected: [number, number] | null;
   notes: Notes;
   isNoteMode: boolean;
   isExtreme: boolean;
@@ -41,6 +42,7 @@ export default function SudokuBoard({
   current,
   solution,
   selected,
+  opponentSelected,
   notes,
   isNoteMode,
   isExtreme,
@@ -95,6 +97,7 @@ export default function SudokuBoard({
               notes={notes[r][c]}
               isFixed={puzzle[r][c] !== null}
               isSelected={selected?.[0] === r && selected?.[1] === c}
+              isOpponentSelected={opponentSelected?.[0] === r && opponentSelected?.[1] === c}
               isHighlighted={isHighlighted(r, c)}
               isSameNumber={isSameNumber(r, c)}
               isError={isError(r, c)}

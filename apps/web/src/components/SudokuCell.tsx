@@ -6,6 +6,7 @@ interface SudokuCellProps {
   notes: Set<number>;
   isFixed: boolean;
   isSelected: boolean;
+  isOpponentSelected: boolean;
   isHighlighted: boolean;
   isSameNumber: boolean;
   isError: boolean;
@@ -18,6 +19,7 @@ interface SudokuCellProps {
 
 function getBg(
   isSelected: boolean,
+  isOpponentSelected: boolean,
   isError: boolean,
   isSameNumber: boolean,
   isHighlighted: boolean,
@@ -26,12 +28,14 @@ function getBg(
 ): string {
   if (isExtreme) {
     if (isSelected) return isNoteMode ? 'bg-[#7f1d1d]' : 'bg-[#dc2626]';
+    if (isOpponentSelected) return 'bg-[#1a3a1a]';
     if (isError) return 'bg-[#450a0a]';
     if (isSameNumber) return 'bg-[#431407]';
     if (isHighlighted) return 'bg-[#1c1c1c]';
     return 'bg-[#111111]';
   }
   if (isSelected) return isNoteMode ? 'bg-[#f0b8d9]' : 'bg-[#f37eb9]';
+  if (isOpponentSelected) return 'bg-[#d1fae5]';
   if (isError) return 'bg-red-200';
   if (isSameNumber) return 'bg-[#bae6fd]';
   if (isHighlighted) return 'bg-[#fce4f3]';
@@ -42,6 +46,7 @@ function getTextColor(
   isFixed: boolean,
   isError: boolean,
   isSelected: boolean,
+  isOpponentSelected: boolean,
   player: Player | null,
   isExtreme: boolean
 ): string {
@@ -49,6 +54,7 @@ function getTextColor(
     if (isFixed) return 'text-[#f97316]';
     if (isError) return 'text-[#ff4444]';
     if (isSelected) return 'text-white';
+    if (isOpponentSelected) return 'text-[#4ade80]';
     if (player === 'creator') return 'text-[#ff6b6b]';
     if (player === 'joiner') return 'text-[#ffd93d]';
     return 'text-[#ef4444]';
@@ -56,6 +62,7 @@ function getTextColor(
   if (isFixed) return 'text-[#2563a8]';
   if (isError) return 'text-red-500';
   if (isSelected) return 'text-white';
+  if (isOpponentSelected) return 'text-[#059669]';
   if (player === 'creator') return 'text-[#f37eb9]';
   if (player === 'joiner') return 'text-[#22a5e0]';
   return 'text-[#9b5fa5]';
@@ -79,6 +86,7 @@ export default function SudokuCell({
   notes,
   isFixed,
   isSelected,
+  isOpponentSelected,
   isHighlighted,
   isSameNumber,
   isError,
@@ -98,8 +106,23 @@ export default function SudokuCell({
       : '';
 
   const borderColor = isExtreme ? 'border-[#2a2a2a]' : 'border-[#e9b8d9]';
-  const bg = getBg(isSelected, isError, isSameNumber, isHighlighted, isNoteMode, isExtreme);
-  const textColor = getTextColor(isFixed, isError, isSelected, player, isExtreme);
+  const bg = getBg(
+    isSelected,
+    isOpponentSelected,
+    isError,
+    isSameNumber,
+    isHighlighted,
+    isNoteMode,
+    isExtreme
+  );
+  const textColor = getTextColor(
+    isFixed,
+    isError,
+    isSelected,
+    isOpponentSelected,
+    player,
+    isExtreme
+  );
   const textWeight = getTextWeight(isFixed, isSelected, player);
 
   return (

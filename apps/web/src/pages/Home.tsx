@@ -220,6 +220,12 @@ export default function Home() {
     return 'bg-[#9b5fa5] hover:bg-[#7a4a84]';
   }
 
+  function getFooterColor(): string {
+    if (isExtreme) return 'text-[#4a1515]';
+    if (isDark) return 'text-[#2a2a4a]';
+    return 'text-[#e9b8d9]';
+  }
+
   function getRankingButtonStyle(): string {
     if (isExtreme) return 'text-[#f97316] hover:text-[#fb923c]';
     if (isDark) return 'text-[#f37eb9] hover:text-[#e06aa5]';
@@ -408,6 +414,10 @@ export default function Home() {
       </div>
 
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
+
+      <p className={`text-[10px] font-medium transition-colors duration-500 ${getFooterColor()}`}>
+        Made by Nana 🌸
+      </p>
     </div>
   );
 }

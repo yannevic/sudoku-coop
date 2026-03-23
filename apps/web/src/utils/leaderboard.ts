@@ -13,6 +13,8 @@ export async function saveToLeaderboard(
   timeSeconds: number,
   difficulty: string
 ): Promise<void> {
+  if (!import.meta.env.PROD) return;
+
   const { error } = await supabase
     .from('leaderboard')
     .insert({ duo_name: duoName, time_seconds: timeSeconds, difficulty });

@@ -175,6 +175,13 @@ function getMobileDeleteStyle(isExtreme: boolean, isDark: boolean): string {
   return 'bg-white text-gray-400 border border-[#e9b8d9]';
 }
 
+const DIFFICULTY_LABEL: Record<string, string> = {
+  easy: 'Fácil',
+  medium: 'Médio',
+  hard: 'Difícil',
+  extreme: '💀 Extremo',
+};
+
 export default function Game() {
   const navigate = useNavigate();
   const { roomId, roomState, playerName, updateRoom, setRoomState, leaveRoom, isDark, toggleDark } =
@@ -393,6 +400,25 @@ export default function Game() {
       <h1 className={`text-2xl sm:text-3xl font-bold ${titleColor} relative z-10`}>
         {isExtreme ? '💀 Sudoku Extremo' : 'Sudoku Coop 🌸'}
       </h1>
+
+      {/* Dificuldade + players */}
+      <div className="flex items-center gap-3 relative z-10">
+        <span
+          className={`text-xs font-semibold tracking-widest uppercase ${getLabelColor(isExtreme, isDark)}`}
+        >
+          {DIFFICULTY_LABEL[roomState.difficulty]}
+        </span>
+        <div className={`w-px h-3 ${getBarDividerColor(isExtreme, isDark)}`} />
+        <div className="flex items-center gap-1.5">
+          <span className={`text-xs font-bold ${getPlayerNameColor('creator', isExtreme)}`}>
+            {creatorName}
+          </span>
+          <span className={`text-xs ${getLabelColor(isExtreme, isDark)}`}>×</span>
+          <span className={`text-xs font-bold ${getPlayerNameColor('joiner', isExtreme)}`}>
+            {joinerDisplayName || '...'}
+          </span>
+        </div>
+      </div>
 
       {/* Barra superior */}
       <div

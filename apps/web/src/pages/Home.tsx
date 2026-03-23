@@ -221,9 +221,9 @@ export default function Home() {
   }
 
   function getFooterColor(): string {
-    if (isExtreme) return 'text-[#4a1515]';
-    if (isDark) return 'text-[#2a2a4a]';
-    return 'text-[#e9b8d9]';
+    if (isExtreme) return 'text-[#7a2020]';
+    if (isDark) return 'text-[#44446a]';
+    return 'text-[#c9a0d0]';
   }
 
   function getRankingButtonStyle(): string {

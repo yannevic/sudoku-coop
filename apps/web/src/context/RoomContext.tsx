@@ -122,6 +122,12 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (data.player_count >= 2) {
+      setError('Esta sala já está cheia. Crie uma nova!');
+      setLoading(false);
+      return;
+    }
+
     const notes: Notes = (data.notes as number[][][]).map((row) =>
       row.map((cell) => new Set(cell))
     );

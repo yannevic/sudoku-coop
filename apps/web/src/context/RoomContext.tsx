@@ -11,6 +11,8 @@ import supabase from '../utils/supabase';
 import { generatePuzzle, createEmptyNotes, createEmptyCurrentBoard } from '../utils/sudoku';
 import type { Board, Difficulty, Notes, Player, CurrentBoard } from '../utils/sudoku';
 
+export type GameMode = 'solo' | 'duo';
+
 interface RoomState {
   puzzle: Board;
   solution: Board;
@@ -28,7 +30,9 @@ interface RoomContextType {
   loading: boolean;
   error: string | null;
   isDark: boolean;
+  gameMode: GameMode;
   toggleDark: () => void;
+  setGameMode: (mode: GameMode) => void;
   createRoom: (difficulty: Difficulty) => Promise<void>;
   joinRoom: (code: string) => Promise<void>;
   updateRoom: (current: CurrentBoard, notes: Notes) => Promise<void>;
@@ -41,6 +45,8 @@ interface RoomContextType {
 
 const RoomContext = createContext<RoomContextType | null>(null);
 
+const SOLO_ROOM_ID = '__solo__';
+
 function generateRoomCode(): string {
   return Math.random().toString(36).substring(2, 6).toUpperCase();
 }
@@ -52,53 +58,74 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
+  const [gameMode, setGameMode] = useState<GameMode>('duo');
 
   const toggleDark = useCallback(() => {
     setIsDark((prev) => !prev);
   }, []);
 
-  const createRoom = useCallback(async (difficulty: Difficulty) => {
-    setLoading(true);
-    setError(null);
+  const createRoom = useCallback(
+    async (difficulty: Difficulty) => {
+      setLoading(true);
+      setError(null);
 
-    await new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
 
-    const { puzzle, solution } = generatePuzzle(difficulty);
-    const current = createEmptyCurrentBoard();
-    const notes = createEmptyNotes();
-    const id = generateRoomCode();
+      const { puzzle, solution } = generatePuzzle(difficulty);
+      const current = createEmptyCurrentBoard();
+      const notes = createEmptyNotes();
 
-    const { error: err } = await supabase.from('rooms').insert({
-      id,
-      puzzle,
-      solution,
-      current,
-      notes: notes.map((row) => row.map((cell) => Array.from(cell))),
-      difficulty,
-      player_count: 1,
-      finished: false,
-    });
+      // Modo solo: sem Supabase, estado apenas local
+      if (gameMode === 'solo') {
+        setRoomId(SOLO_ROOM_ID);
+        setRoomState({
+          puzzle,
+          solution,
+          current,
+          notes,
+          difficulty,
+          player: 'creator',
+          playerCount: 2, // já começa como 2 para o timer não ficar bloqueado
+        });
+        setLoading(false);
+        return;
+      }
 
-    if (err) {
-      setError('Erro ao criar sala. Tente novamente.');
+      const id = generateRoomCode();
+
+      const { error: err } = await supabase.from('rooms').insert({
+        id,
+        puzzle,
+        solution,
+        current,
+        notes: notes.map((row) => row.map((cell) => Array.from(cell))),
+        difficulty,
+        player_count: 1,
+        finished: false,
+      });
+
+      if (err) {
+        setError('Erro ao criar sala. Tente novamente.');
+        setLoading(false);
+        return;
+      }
+
+      setRoomId(id);
+      setRoomState({
+        puzzle,
+        solution,
+        current,
+        notes,
+        difficulty,
+        player: 'creator',
+        playerCount: 1,
+      });
       setLoading(false);
-      return;
-    }
-
-    setRoomId(id);
-    setRoomState({
-      puzzle,
-      solution,
-      current,
-      notes,
-      difficulty,
-      player: 'creator',
-      playerCount: 1,
-    });
-    setLoading(false);
-  }, []);
+    },
+    [gameMode]
+  );
 
   const joinRoom = useCallback(async (code: string) => {
     setLoading(true);
@@ -150,6 +177,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const updateRoom = useCallback(
     async (current: CurrentBoard, notes: Notes) => {
       if (!roomId) return;
+      // Modo solo não sincroniza com Supabase
+      if (roomId === SOLO_ROOM_ID) return;
       await supabase
         .from('rooms')
         .update({
@@ -163,12 +192,14 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   const decrementPlayerCount = useCallback(async () => {
     if (!roomId || !roomState) return;
+    if (roomId === SOLO_ROOM_ID) return;
     const next = Math.max(0, roomState.playerCount - 1);
     await supabase.from('rooms').update({ player_count: next }).eq('id', roomId);
   }, [roomId, roomState]);
 
   const markRoomFinished = useCallback(async () => {
     if (!roomId) return;
+    if (roomId === SOLO_ROOM_ID) return;
     await supabase.from('rooms').update({ finished: true }).eq('id', roomId);
   }, [roomId]);
 
@@ -180,6 +211,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!roomId) return undefined;
+    // Modo solo não usa realtime
+    if (roomId === SOLO_ROOM_ID) return undefined;
 
     const channel = supabase
       .channel(`room-${roomId}`)
@@ -217,7 +250,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       isDark,
+      gameMode,
       toggleDark,
+      setGameMode,
       createRoom,
       joinRoom,
       updateRoom,
@@ -234,7 +269,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       isDark,
+      gameMode,
       toggleDark,
+      setGameMode,
       createRoom,
       joinRoom,
       updateRoom,

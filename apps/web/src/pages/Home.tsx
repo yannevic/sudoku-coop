@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardPaste, Trophy, Loader2, Moon, Sun } from 'lucide-react';
 import { useRoomContext } from '../context/RoomContext';
 import LeaderboardModal from '../components/LeaderboardModal';
 import type { Difficulty } from '../utils/sudoku';
+import type { GameMode } from '../context/RoomContext';
 
 const ROOM_CODE_REGEX = /^[A-Z0-9]{4}$/;
 
@@ -86,6 +87,8 @@ export default function Home() {
     playerName,
     isDark,
     toggleDark,
+    gameMode,
+    setGameMode,
   } = useRoomContext();
   const [code, setCode] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
@@ -125,11 +128,12 @@ export default function Home() {
   }, []);
 
   const isNameValid = playerName.trim().length > 0;
+  const isSolo = gameMode === 'solo';
 
   function getCreateLabel(): string {
     if (loading) return 'Criando...';
-    if (isExtreme) return '💀 Criar sala extrema';
-    return '✨ Criar nova sala';
+    if (isExtreme) return isSolo ? '💀 Jogar solo extremo' : '💀 Criar sala extrema';
+    return isSolo ? '🧍‍♂️ Jogar solo' : '✨ Criar nova sala';
   }
 
   function getJoinLabel(): string {
@@ -147,7 +151,6 @@ export default function Home() {
 
   function getTitleColor(): string {
     if (isExtreme) return 'text-[#ef4444]';
-    if (isDark) return 'text-[#f37eb9]';
     return 'text-[#f37eb9]';
   }
 
@@ -232,6 +235,16 @@ export default function Home() {
     return 'text-[#9b5fa5] hover:text-[#7a4a84]';
   }
 
+  function getModeBtnStyle(mode: GameMode): string {
+    const isSelected = gameMode === mode;
+    if (isSelected && isExtreme) return 'bg-[#dc2626] text-white';
+    if (isSelected && isDark) return 'bg-[#f37eb9] text-white';
+    if (isSelected) return 'bg-[#f37eb9] text-white';
+    if (isExtreme) return 'bg-[#1a1a1a] text-[#666] border border-[#333] hover:bg-[#222]';
+    if (isDark) return 'bg-[#0f0f23] text-[#aaaaaa] border border-[#2a2a4a] hover:bg-[#1a1a3a]';
+    return 'bg-[#fce4f3] text-[#9b5fa5] hover:bg-[#f0d6eb]';
+  }
+
   return (
     <div
       className={`min-h-screen flex flex-col items-center justify-center gap-8 p-4 transition-colors duration-500 ${getBg()}`}
@@ -314,6 +327,20 @@ export default function Home() {
             maxLength={20}
             className={`w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-colors ${getInputStyle()}`}
           />
+
+          {/* Toggle Solo / Dupla */}
+          <div className="flex gap-2 mt-1">
+            {(['solo', 'duo'] as GameMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setGameMode(m)}
+                className={`flex-1 py-1.5 rounded-xl text-sm font-semibold transition-colors ${getModeBtnStyle(m)}`}
+              >
+                {m === 'solo' ? '🧍‍♂️ Solo' : '👫 Dupla'}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className={`h-px ${getDividerColor()}`} />
@@ -365,55 +392,63 @@ export default function Home() {
           )}
         </button>
 
-        <div className="flex items-center gap-2">
-          <div className={`flex-1 h-px ${getOrDividerColor()}`} />
-          <span className={`text-xs ${getOrTextColor()}`}>ou</span>
-          <div className={`flex-1 h-px ${getOrDividerColor()}`} />
-        </div>
+        {/* Entrada na sala — só no modo Dupla */}
+        {!isSolo && (
+          <>
+            <div className="flex items-center gap-2">
+              <div className={`flex-1 h-px ${getOrDividerColor()}`} />
+              <span className={`text-xs ${getOrTextColor()}`}>ou</span>
+              <div className={`flex-1 h-px ${getOrDividerColor()}`} />
+            </div>
 
-        {/* Entrada na sala */}
-        <div className="flex flex-col gap-2">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Código da sala"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
-              maxLength={4}
-              className={`w-full px-4 py-3 rounded-xl text-center text-lg font-bold tracking-widest focus:outline-none transition-colors pr-10 ${getCodeInputStyle()}`}
-            />
-            <button
-              type="button"
-              onClick={tryPasteFromClipboard}
-              className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${getPasteButtonColor()}`}
-              title="Colar código"
-            >
-              <ClipboardPaste size={16} />
-            </button>
-            {pasteHint && (
-              <span
-                className={`absolute -bottom-5 left-0 right-0 text-center text-[10px] font-medium ${getPasteHintColor()}`}
+            <div className="flex flex-col gap-2">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Código da sala"
+                  value={code}
+                  onChange={(e) =>
+                    setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())
+                  }
+                  maxLength={4}
+                  className={`w-full px-4 py-3 rounded-xl text-center text-lg font-bold tracking-widest focus:outline-none transition-colors pr-10 ${getCodeInputStyle()}`}
+                />
+                <button
+                  type="button"
+                  onClick={tryPasteFromClipboard}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${getPasteButtonColor()}`}
+                  title="Colar código"
+                >
+                  <ClipboardPaste size={16} />
+                </button>
+                {pasteHint && (
+                  <span
+                    className={`absolute -bottom-5 left-0 right-0 text-center text-[10px] font-medium ${getPasteHintColor()}`}
+                  >
+                    Código colado ✓
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleJoin}
+                disabled={loading || code.length < 4 || !isNameValid}
+                className={`w-full py-3 text-white rounded-xl font-semibold transition-all disabled:opacity-50 mt-2 ${getJoinButtonStyle()}`}
+                title={!isNameValid ? 'Preencha seu nome primeiro' : undefined}
               >
-                Código colado ✓
-              </span>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={handleJoin}
-            disabled={loading || code.length < 4 || !isNameValid}
-            className={`w-full py-3 text-white rounded-xl font-semibold transition-all disabled:opacity-50 mt-2 ${getJoinButtonStyle()}`}
-            title={!isNameValid ? 'Preencha seu nome primeiro' : undefined}
-          >
-            {getJoinLabel()}
-          </button>
-        </div>
+                {getJoinLabel()}
+              </button>
+            </div>
+          </>
+        )}
 
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
       </div>
 
-      {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
+      {showLeaderboard && (
+        <LeaderboardModal onClose={() => setShowLeaderboard(false)} initialMode={gameMode} />
+      )}
 
       <p className={`text-[10px] font-medium transition-colors duration-500 ${getFooterColor()}`}>
         Made by Nana 🌸

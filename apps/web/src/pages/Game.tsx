@@ -36,21 +36,19 @@ function isCellLocked(
   return cell !== null && cell.value === solution[r][c];
 }
 
-// Ao confirmar um número correto em [r,c], limpa esse número das notas
-// de todas as células na mesma linha, coluna e quadrante
 function clearNotesForCorrectCell(notes: Notes, r: number, c: number, num: number): Notes {
   const next: Notes = notes.map((row) => row.map((cell) => new Set(cell)));
   const boxR = Math.floor(r / 3) * 3;
   const boxC = Math.floor(c / 3) * 3;
 
   for (let i = 0; i < 9; i += 1) {
-    next[r][i].delete(num); // mesma linha
-    next[i][c].delete(num); // mesma coluna
+    next[r][i].delete(num);
+    next[i][c].delete(num);
   }
 
   for (let dr = 0; dr < 3; dr += 1) {
     for (let dc = 0; dc < 3; dc += 1) {
-      next[boxR + dr][boxC + dc].delete(num); // mesmo quadrante
+      next[boxR + dr][boxC + dc].delete(num);
     }
   }
 
@@ -201,6 +199,7 @@ export default function Game() {
     toggleDark,
     decrementPlayerCount,
     markRoomFinished,
+    gameMode,
   } = useRoomContext();
   const [selected, setSelected] = useState<[number, number] | null>(null);
   const [isNoteMode, setIsNoteMode] = useState(false);
@@ -211,15 +210,17 @@ export default function Game() {
   const [errorCount, setErrorCount] = useState(0);
   const [opponentName, setOpponentName] = useState('');
 
+  const isSolo = gameMode === 'solo';
   const player = roomState?.player ?? null;
   const playerCount = roomState?.playerCount ?? 1;
   const isExtreme = roomState?.difficulty === 'extreme';
 
+  // No solo, chat/presence não são usados mas os hooks precisam ser chamados
   const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
-    useChat(roomId, player, playerName, (name) => setJoinerName(name));
+    useChat(isSolo ? null : roomId, player, playerName, (name) => setJoinerName(name));
 
   const { opponentSelected, broadcastSelection, broadcastName } = usePresence(
-    roomId,
+    isSolo ? null : roomId,
     player,
     playerName,
     (name) => {
@@ -228,10 +229,17 @@ export default function Game() {
     }
   );
 
-  const { seconds, formatted, isRunning, unlockedSolo, unlockSolo } = useTimer(
-    playerCount >= 2,
-    showVictory
-  );
+  // No solo: timer inicia no primeiro clique no tabuleiro (startManually)
+  // No duo: comportamento original (active = playerCount >= 2)
+  const {
+    seconds,
+    formatted,
+    isRunning,
+    unlockedSolo,
+    unlockSolo,
+    startManually,
+    startedManually,
+  } = useTimer(isSolo ? false : playerCount >= 2, showVictory);
 
   const displayName = playerName.trim() || 'Anônimo';
 
@@ -244,19 +252,18 @@ export default function Game() {
   }, [roomId, navigate]);
 
   useEffect(() => {
-    if (!roomState || hasAnnouncedRef.current) return;
+    if (!roomState || hasAnnouncedRef.current || isSolo) return;
     hasAnnouncedRef.current = true;
     announceJoin();
-    // anuncia o próprio nome para o oponente assim que entra
     broadcastName();
-  }, [roomState, announceJoin, broadcastName]);
+  }, [roomState, announceJoin, broadcastName, isSolo]);
 
-  // quando o segundo jogador entra, o creator anuncia o nome de volta
   useEffect(() => {
+    if (isSolo) return;
     if (playerCount >= 2 && player === 'creator') {
       broadcastName();
     }
-  }, [playerCount, player, broadcastName]);
+  }, [playerCount, player, broadcastName, isSolo]);
 
   useEffect(() => {
     if (!roomState || showVictoryRef.current) return;
@@ -270,9 +277,15 @@ export default function Game() {
   const handleSelect = useCallback(
     (row: number, col: number) => {
       setSelected([row, col]);
-      broadcastSelection(row, col);
+      if (!isSolo) {
+        broadcastSelection(row, col);
+      }
+      // No solo, inicia o timer no primeiro clique
+      if (isSolo && !startedManually) {
+        startManually();
+      }
     },
-    [broadcastSelection]
+    [broadcastSelection, isSolo, startedManually, startManually]
   );
 
   const handleKeyDown = useCallback(
@@ -306,7 +319,6 @@ export default function Game() {
           );
           nextCurrent[r][c] = { value: num, player: roomState.player };
 
-          // se o número colocado for correto, limpa as notas da linha/coluna/quadrante
           let nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
           nextNotes[r][c].clear();
           if (num === roomState.solution[r][c]) {
@@ -341,9 +353,8 @@ export default function Game() {
     };
   }, [handleKeyDown]);
 
-  // envia mensagem de saída ao fechar/recarregar a aba
   useEffect(() => {
-    if (!roomId) return undefined;
+    if (!roomId || isSolo) return undefined;
 
     const handleBeforeUnload = () => {
       sendSystemMessage(`👋 ${displayName} saiu da sala.`);
@@ -354,9 +365,8 @@ export default function Game() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [roomId, displayName, sendSystemMessage, decrementPlayerCount]);
+  }, [roomId, displayName, sendSystemMessage, decrementPlayerCount, isSolo]);
 
-  // handler mobile com limpeza de notas ao acertar
   const handleMobileNum = useCallback(
     (num: number) => {
       if (!selected || !roomState) return;
@@ -394,7 +404,13 @@ export default function Game() {
   );
 
   if (!roomState) return null;
-  const waitingForPlayer = playerCount < 2 && !unlockedSolo;
+
+  // No duo: aguarda segundo jogador (comportamento original)
+  const waitingForPlayer = !isSolo && playerCount < 2 && !unlockedSolo;
+
+  // No solo: timer aguarda o primeiro clique
+  const soloWaitingFirstClick = isSolo && !startedManually;
+
   const creatorName = player === 'creator' ? displayName : opponentName || joinerName || 'Anônimo';
   const joinerDisplayName = player === 'joiner' ? displayName : joinerName || opponentName;
 
@@ -403,7 +419,7 @@ export default function Game() {
     setShowLeaderboard(false);
     showVictoryRef.current = false;
     hasAnnouncedRef.current = false;
-    decrementPlayerCount();
+    if (!isSolo) decrementPlayerCount();
     leaveRoom();
     navigate('/');
   };
@@ -419,6 +435,12 @@ export default function Game() {
     : 'text-gray-400 hover:text-[#9b5fa5]';
   const timerIconColor = isExtreme ? 'text-[#dc2626]' : 'text-[#f37eb9]';
   const titleColor = isExtreme ? 'text-[#ef4444]' : 'text-[#f37eb9]';
+
+  function getTitle(): string {
+    if (isExtreme) return '💀 Sudoku Extremo';
+    if (isSolo) return 'Sudoku Solo 🧩';
+    return 'Sudoku Coop 🌸';
+  }
 
   return (
     <div
@@ -453,11 +475,9 @@ export default function Game() {
         </div>
       )}
 
-      <h1 className={`text-2xl sm:text-3xl font-bold ${titleColor} relative z-10`}>
-        {isExtreme ? '💀 Sudoku Extremo' : 'Sudoku Coop 🌸'}
-      </h1>
+      <h1 className={`text-2xl sm:text-3xl font-bold ${titleColor} relative z-10`}>{getTitle()}</h1>
 
-      {/* Info bar: dificuldade, players, erros */}
+      {/* Info bar */}
       <div
         className={`flex items-center gap-2 px-4 py-2 rounded-2xl relative z-10 ${getBarBg(isExtreme, isDark)} shadow-sm`}
       >
@@ -467,13 +487,21 @@ export default function Game() {
           {DIFFICULTY_LABEL[roomState.difficulty]}
         </span>
         <div className={`w-px h-3 ${getBarDividerColor(isExtreme, isDark)}`} />
-        <span className={`text-xs font-bold ${getPlayerNameColor('creator', isExtreme)}`}>
-          {creatorName}
-        </span>
-        <span className={`text-xs ${getLabelColor(isExtreme, isDark)}`}>×</span>
-        <span className={`text-xs font-bold ${getPlayerNameColor('joiner', isExtreme)}`}>
-          {joinerDisplayName || '...'}
-        </span>
+        {isSolo ? (
+          <span className={`text-xs font-bold ${getPlayerNameColor('creator', isExtreme)}`}>
+            {displayName}
+          </span>
+        ) : (
+          <>
+            <span className={`text-xs font-bold ${getPlayerNameColor('creator', isExtreme)}`}>
+              {creatorName}
+            </span>
+            <span className={`text-xs ${getLabelColor(isExtreme, isDark)}`}>×</span>
+            <span className={`text-xs font-bold ${getPlayerNameColor('joiner', isExtreme)}`}>
+              {joinerDisplayName || '...'}
+            </span>
+          </>
+        )}
         <div className={`w-px h-3 ${getBarDividerColor(isExtreme, isDark)}`} />
         <span
           className={`text-xs font-bold tabular-nums ${getErrorCountColor(errorCount, isExtreme, isDark)}`}
@@ -492,29 +520,38 @@ export default function Game() {
             {displayName}
           </span>
         </span>
-        <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
-        <div className="flex items-center gap-2">
-          <span className={`text-xs sm:text-sm font-semibold ${getLabelColor(isExtreme, isDark)}`}>
-            Sala:
-          </span>
-          <span
-            className={`font-bold tracking-widest text-base sm:text-lg ${getRoomCodeColor(isExtreme, isDark)}`}
-          >
-            {roomId}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard.writeText(roomId ?? '');
-              setCopied(true);
-              setTimeout(() => setCopied(false), 2000);
-            }}
-            className={`transition-colors ${getCopyButtonColor(isExtreme, isDark)}`}
-            title="Copiar código"
-          >
-            {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-          </button>
-        </div>
+
+        {/* Código da sala — só no modo duo */}
+        {!isSolo && (
+          <>
+            <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-xs sm:text-sm font-semibold ${getLabelColor(isExtreme, isDark)}`}
+              >
+                Sala:
+              </span>
+              <span
+                className={`font-bold tracking-widest text-base sm:text-lg ${getRoomCodeColor(isExtreme, isDark)}`}
+              >
+                {roomId}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(roomId ?? '');
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className={`transition-colors ${getCopyButtonColor(isExtreme, isDark)}`}
+                title="Copiar código"
+              >
+                {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+              </button>
+            </div>
+          </>
+        )}
+
         {!isExtreme && (
           <>
             <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
@@ -550,6 +587,14 @@ export default function Game() {
           </span>
         </div>
 
+        {/* Solo: aguardando primeiro clique */}
+        {soloWaitingFirstClick && (
+          <span className={`text-[10px] sm:text-[11px] mt-1 ${getWaitingColor(isExtreme, isDark)}`}>
+            ⏸️ Clique no tabuleiro para iniciar o timer
+          </span>
+        )}
+
+        {/* Duo: aguardando segundo jogador */}
         {waitingForPlayer && (
           <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
             <span className={`text-[10px] sm:text-[11px] ${getWaitingColor(isExtreme, isDark)}`}>
@@ -573,7 +618,7 @@ export default function Game() {
           current={roomState.current}
           solution={roomState.solution}
           selected={selected}
-          opponentSelected={opponentSelected}
+          opponentSelected={isSolo ? null : opponentSelected}
           notes={roomState.notes}
           isNoteMode={isNoteMode}
           isExtreme={isExtreme}
@@ -649,31 +694,35 @@ export default function Game() {
         <button
           type="button"
           onClick={() => {
-            sendSystemMessage(`👋 ${displayName} saiu da sala.`);
+            if (!isSolo) sendSystemMessage(`👋 ${displayName} saiu da sala.`);
             handleLeave();
           }}
           className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm transition-colors ${leaveStyle}`}
         >
-          Sair da sala
+          Sair
         </button>
       </div>
 
-      <ChatWindow
-        messages={messages}
-        unreadCount={unreadCount}
-        player={roomState.player}
-        onSend={sendMessage}
-        onOpenChange={setIsOpen}
-      />
+      {/* Chat — só no modo duo */}
+      {!isSolo && (
+        <ChatWindow
+          messages={messages}
+          unreadCount={unreadCount}
+          player={roomState.player}
+          onSend={sendMessage}
+          onOpenChange={setIsOpen}
+        />
+      )}
 
       {showVictory && (
         <VictoryModal
           timeSeconds={seconds}
           difficulty={roomState.difficulty}
           creatorName={creatorName}
-          joinerName={joinerDisplayName}
+          joinerName={isSolo ? '' : joinerDisplayName}
           errorCount={errorCount}
           isCreator={player === 'creator'}
+          mode={isSolo ? 'solo' : 'duo'}
           onLeave={handleLeave}
           onShowLeaderboard={() => {
             setShowVictory(false);
@@ -685,6 +734,7 @@ export default function Game() {
       {showLeaderboard && (
         <LeaderboardModal
           initialDifficulty={roomState.difficulty}
+          initialMode={isSolo ? 'solo' : 'duo'}
           onClose={handleLeave}
           onBack={() => {
             setShowLeaderboard(false);

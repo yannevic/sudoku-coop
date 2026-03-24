@@ -1,11 +1,14 @@
 import supabase from './supabase';
 
+export type LeaderboardMode = 'solo' | 'duo';
+
 export interface LeaderboardEntry {
   id: string;
   duo_name: string;
   time_seconds: number;
   error_count: number;
   difficulty: string;
+  mode: LeaderboardMode;
   created_at: string;
 }
 
@@ -13,23 +16,32 @@ export async function saveToLeaderboard(
   duoName: string,
   timeSeconds: number,
   difficulty: string,
-  errorCount: number
+  errorCount: number,
+  mode: LeaderboardMode
 ): Promise<void> {
   if (!import.meta.env.PROD) return;
 
-  const { error } = await supabase
-    .from('leaderboard')
-    .insert({ duo_name: duoName, time_seconds: timeSeconds, difficulty, error_count: errorCount });
+  const { error } = await supabase.from('leaderboard').insert({
+    duo_name: duoName,
+    time_seconds: timeSeconds,
+    difficulty,
+    error_count: errorCount,
+    mode,
+  });
   // eslint-disable-next-line no-console
   if (error) console.error('[leaderboard] erro ao salvar:', error);
   // eslint-disable-next-line no-console
-  else console.log('[leaderboard] salvo:', { duoName, timeSeconds, difficulty, errorCount });
+  else console.log('[leaderboard] salvo:', { duoName, timeSeconds, difficulty, errorCount, mode });
 }
 
-export async function fetchLeaderboard(difficulty?: string): Promise<LeaderboardEntry[]> {
+export async function fetchLeaderboard(
+  difficulty?: string,
+  mode: LeaderboardMode = 'duo'
+): Promise<LeaderboardEntry[]> {
   let query = supabase
     .from('leaderboard')
     .select('*')
+    .eq('mode', mode)
     .order('time_seconds', { ascending: true })
     .limit(7);
 

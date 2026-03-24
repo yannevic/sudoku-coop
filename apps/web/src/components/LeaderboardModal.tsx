@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Trophy, Loader2, Skull } from 'lucide-react';
 import { fetchLeaderboard, formatTime } from '../utils/leaderboard';
-import type { LeaderboardEntry } from '../utils/leaderboard';
+import type { LeaderboardEntry, LeaderboardMode } from '../utils/leaderboard';
 import type { Difficulty } from '../utils/sudoku';
 
 interface LeaderboardModalProps {
   onClose: () => void;
   onBack?: () => void;
   initialDifficulty?: Difficulty;
+  initialMode?: LeaderboardMode;
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -23,13 +24,21 @@ function getMedal(index: number): string {
   return `${index + 1}º`;
 }
 
-function getEmptyText(difficulty: Difficulty): string {
+function getEmptyText(difficulty: Difficulty, mode: LeaderboardMode): string {
   if (difficulty === 'extreme') return 'Nenhum sobrevivente ainda.\nSeja o primeiro!';
+  if (mode === 'solo') return 'Nenhum solitário ainda.\nSeja o primeiro!';
   return 'Nenhum registro ainda.\nSeja o primeiro!';
 }
 
 function getDifficultyBtnStyle(isSelected: boolean, isExtreme: boolean): string {
   if (isSelected) return 'bg-[#f37eb9] text-white';
+  if (isExtreme) return 'bg-[#1a1a1a] text-[#666] border border-[#333] hover:bg-[#222]';
+  return 'bg-[#fce4f3] text-[#9b5fa5] hover:bg-[#f0d6eb]';
+}
+
+function getModeBtnStyle(isSelected: boolean, isExtreme: boolean): string {
+  if (isSelected && isExtreme) return 'bg-[#dc2626] text-white';
+  if (isSelected) return 'bg-[#9b5fa5] text-white';
   if (isExtreme) return 'bg-[#1a1a1a] text-[#666] border border-[#333] hover:bg-[#222]';
   return 'bg-[#fce4f3] text-[#9b5fa5] hover:bg-[#f0d6eb]';
 }
@@ -46,36 +55,42 @@ function getErrorColor(errorCount: number, isExtreme: boolean): string {
   return 'text-red-400';
 }
 
+// Cache separado por mode+difficulty
+type CacheKey = `${LeaderboardMode}-${Difficulty}`;
+
 export default function LeaderboardModal({
   onClose,
   onBack,
   initialDifficulty = 'medium',
+  initialMode = 'duo',
 }: LeaderboardModalProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
+  const [mode, setMode] = useState<LeaderboardMode>(initialMode);
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const cache = useRef<Partial<Record<Difficulty, LeaderboardEntry[]>>>({});
+  const cache = useRef<Partial<Record<CacheKey, LeaderboardEntry[]>>>({});
 
   const isExtreme = difficulty === 'extreme';
 
   const load = useCallback(async () => {
-    if (cache.current[difficulty]) {
-      setEntries(cache.current[difficulty]!);
+    const key: CacheKey = `${mode}-${difficulty}`;
+    if (cache.current[key]) {
+      setEntries(cache.current[key]!);
       setLoading(false);
       return;
     }
     setLoading(true);
-    const data = await fetchLeaderboard(difficulty);
-    cache.current[difficulty] = data;
+    const data = await fetchLeaderboard(difficulty, mode);
+    cache.current[key] = data;
     setEntries(data);
     setLoading(false);
-  }, [difficulty]);
+  }, [difficulty, mode]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const emptyLines = getEmptyText(difficulty).split('\n');
+  const emptyLines = getEmptyText(difficulty, mode).split('\n');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -119,8 +134,22 @@ export default function LeaderboardModal({
           </button>
         </div>
 
+        {/* Aba Solo / Duo */}
+        <div className="flex gap-2 px-6 pt-4">
+          {(['duo', 'solo'] as LeaderboardMode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={`flex-1 py-1.5 rounded-xl text-sm font-semibold transition-colors ${getModeBtnStyle(mode === m, isExtreme)}`}
+            >
+              {m === 'duo' ? '👫 Dupla' : '🧍‍♂️ Solo'}
+            </button>
+          ))}
+        </div>
+
         {/* Filtro de dificuldade */}
-        <div className="flex flex-col gap-2 px-6 pt-4">
+        <div className="flex flex-col gap-2 px-6 pt-3">
           <div className="flex gap-2">
             {DIFFICULTIES.map((d) => (
               <button

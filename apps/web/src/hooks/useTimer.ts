@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 export default function useTimer(active: boolean, paused = false) {
   const [seconds, setSeconds] = useState(0);
   const [unlockedSolo, setUnlockedSolo] = useState(false);
+  const [startedManually, setStartedManually] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isRunning = (active || unlockedSolo) && !paused;
@@ -29,6 +30,13 @@ export default function useTimer(active: boolean, paused = false) {
     setUnlockedSolo(true);
   }, []);
 
+  // Inicia o timer manualmente (modo solo — dispara no primeiro clique no tabuleiro)
+  const startManually = useCallback(() => {
+    if (startedManually) return;
+    setStartedManually(true);
+    setUnlockedSolo(true);
+  }, [startedManually]);
+
   const format = (s: number): string => {
     const m = Math.floor(s / 60)
       .toString()
@@ -37,5 +45,13 @@ export default function useTimer(active: boolean, paused = false) {
     return `${m}:${sec}`;
   };
 
-  return { seconds, formatted: format(seconds), isRunning, unlockedSolo, unlockSolo };
+  return {
+    seconds,
+    formatted: format(seconds),
+    isRunning,
+    unlockedSolo,
+    unlockSolo,
+    startManually,
+    startedManually,
+  };
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Trophy } from 'lucide-react';
 import { saveToLeaderboard, formatDuoName, formatTime } from '../utils/leaderboard';
+import type { LeaderboardMode } from '../utils/leaderboard';
 import type { Difficulty } from '../utils/sudoku';
 
 interface VictoryModalProps {
@@ -10,6 +11,7 @@ interface VictoryModalProps {
   creatorName: string;
   joinerName: string;
   isCreator: boolean;
+  mode: LeaderboardMode;
   onLeave: () => void;
   onShowLeaderboard: () => void;
 }
@@ -21,17 +23,22 @@ export default function VictoryModal({
   creatorName,
   joinerName,
   isCreator,
+  mode,
   onLeave,
   onShowLeaderboard,
 }: VictoryModalProps) {
   const savedRef = useRef(false);
-  const duoName = useRef(formatDuoName(creatorName, joinerName, new Date())).current;
+  const duoName = useRef(
+    mode === 'solo'
+      ? formatDuoName(creatorName, '', new Date())
+      : formatDuoName(creatorName, joinerName, new Date())
+  ).current;
 
   useEffect(() => {
     if (!isCreator || savedRef.current) return;
     savedRef.current = true;
-    saveToLeaderboard(duoName, timeSeconds, difficulty, errorCount);
-  }, [duoName, timeSeconds, difficulty, isCreator, errorCount]);
+    saveToLeaderboard(duoName, timeSeconds, difficulty, errorCount, mode);
+  }, [duoName, timeSeconds, difficulty, isCreator, errorCount, mode]);
 
   const difficultyLabel: Record<Difficulty, string> = {
     easy: 'Fácil',
@@ -39,6 +46,8 @@ export default function VictoryModal({
     hard: 'Difícil',
     extreme: '💀 Extremo',
   };
+
+  const isSolo = mode === 'solo';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm overflow-hidden">
@@ -58,15 +67,17 @@ export default function VictoryModal({
         <div className="bg-[#9b5fa5] px-6 py-6 flex flex-col items-center gap-2">
           <Trophy size={36} className="text-yellow-300" />
           <h2 className="text-white font-bold text-2xl">Puzzle resolvido!</h2>
-          <p className="text-[#e9c4f5] text-sm text-center">Parabéns à dupla incrível 🌸</p>
+          <p className="text-[#e9c4f5] text-sm text-center">
+            {isSolo ? 'Você arrasou! 🌸' : 'Parabéns à dupla incrível 🌸'}
+          </p>
         </div>
 
         {/* Conteúdo */}
         <div className="px-6 py-6 flex flex-col gap-4">
-          {/* Nome da dupla */}
+          {/* Nome */}
           <div className="bg-[#fdf6fb] rounded-2xl px-4 py-3 text-center">
             <p className="text-[10px] text-[#c9a0d0] uppercase font-semibold tracking-widest mb-1">
-              Dupla
+              {isSolo ? 'Jogador' : 'Dupla'}
             </p>
             <p className="text-[#7a4a84] font-bold text-base leading-snug">{duoName}</p>
           </div>

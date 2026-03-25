@@ -216,6 +216,8 @@ export default function Game() {
   const [joinerName, setJoinerName] = useState('');
   const [errorCount, setErrorCount] = useState(0);
   const [opponentName, setOpponentName] = useState('');
+  // Segundos recebidos via broadcast do jogador (usado pelo espectador)
+  const [syncedSeconds, setSyncedSeconds] = useState<number | undefined>(undefined);
 
   const isSolo = gameMode === 'solo';
   const isSpectator = gameMode === 'spectator';
@@ -225,7 +227,6 @@ export default function Game() {
   const playerCount = roomState?.playerCount ?? 1;
   const isExtreme = roomState?.difficulty === 'extreme';
 
-  // Todos os modos usam canais agora — solo tem sala real no Supabase
   const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
     useChat(roomId, player, playerName, (name) => setJoinerName(name));
 
@@ -234,15 +235,24 @@ export default function Game() {
     spectators,
     broadcastSelection,
     broadcastName,
+    broadcastTimer,
     announceSpectatorJoin,
     announceSpectatorLeave,
-  } = usePresence(roomId, player, playerName, (name) => {
-    setOpponentName(name);
-    if (player === 'creator') setJoinerName(name);
-  });
+  } = usePresence(
+    roomId,
+    player,
+    playerName,
+    (name) => {
+      setOpponentName(name);
+      if (player === 'creator') setJoinerName(name);
+    },
+    // Callback de sincronização de timer — só usado pelo espectador
+    (seconds) => {
+      if (isSpectator) setSyncedSeconds(seconds);
+    }
+  );
 
-  // Solo: timer inicia no primeiro clique (startManually), ignora playerCount
-  // Duo: timer inicia quando playerCount >= 2
+  // Jogador: timer local. Espectador: timer externo via syncedSeconds
   const {
     seconds,
     formatted,
@@ -251,7 +261,17 @@ export default function Game() {
     unlockSolo,
     startManually,
     startedManually,
-  } = useTimer(isSolo ? false : playerCount >= 2, showVictory);
+  } = useTimer(
+    isSolo ? false : playerCount >= 2,
+    showVictory,
+    isSpectator ? syncedSeconds : undefined
+  );
+
+  // Jogador broadcast do timer a cada segundo para espectadores
+  useEffect(() => {
+    if (isSpectator || !isRunning) return;
+    broadcastTimer(seconds);
+  }, [seconds, isRunning, isSpectator, broadcastTimer]);
 
   const displayName = playerName.trim() || 'Anônimo';
 
@@ -271,9 +291,10 @@ export default function Game() {
       announceSpectatorJoin();
     } else {
       announceJoin();
-      if (!isSolo) broadcastName();
+      // Solo e duo anunciam o nome para que espectadores vejam o creator
+      broadcastName();
     }
-  }, [roomState, announceJoin, broadcastName, isSolo, isSpectator, announceSpectatorJoin]);
+  }, [roomState, announceJoin, broadcastName, isSpectator, announceSpectatorJoin]);
 
   useEffect(() => {
     if (!isDuo) return;
@@ -295,9 +316,7 @@ export default function Game() {
     (row: number, col: number) => {
       if (isSpectator) return;
       setSelected([row, col]);
-      if (!isSolo) {
-        broadcastSelection(row, col);
-      }
+      broadcastSelection(row, col);
       if (isSolo && !startedManually) {
         startManually();
       }
@@ -377,6 +396,8 @@ export default function Game() {
 
     const handleBeforeUnload = () => {
       if (isSpectator) {
+        // Bug 3 fix: espectador também envia mensagem de saída
+        sendSystemMessage(`👋 ${displayName} (Espectador) saiu da sala.`);
         announceSpectatorLeave();
       } else {
         sendSystemMessage(`👋 ${displayName} saiu da sala.`);
@@ -438,7 +459,17 @@ export default function Game() {
   const waitingForPlayer = isDuo && playerCount < 2 && !unlockedSolo;
   const soloWaitingFirstClick = isSolo && !startedManually;
 
-  const creatorName = player === 'creator' ? displayName : opponentName || joinerName || 'Anônimo';
+  // roomIsSolo: sala é solo quando player_count nunca chegou a 2 (só 1 jogador)
+  // Espectador usa isso para mostrar o título e info bar corretos
+  const roomIsSolo = roomState.playerCount === 1 || isSolo;
+
+  function getCreatorName(): string {
+    if (player === 'creator') return displayName;
+    // Espectador ou joiner: nome vem via broadcast
+    return opponentName || joinerName || '...';
+  }
+
+  const creatorName = getCreatorName();
   const joinerDisplayName = player === 'joiner' ? displayName : joinerName || opponentName;
 
   const resetAndLeave = () => {
@@ -447,7 +478,10 @@ export default function Game() {
     showVictoryRef.current = false;
     hasAnnouncedRef.current = false;
     if (!isSpectator) decrementPlayerCount();
-    if (isSpectator) announceSpectatorLeave();
+    if (isSpectator) {
+      sendSystemMessage(`👋 ${displayName} (Espectador) saiu da sala.`);
+      announceSpectatorLeave();
+    }
     leaveRoom();
     navigate('/');
   };
@@ -498,7 +532,7 @@ export default function Game() {
       )}
 
       <h1 className={`text-2xl sm:text-3xl font-bold ${titleColor} relative z-10`}>
-        {getTitle(isExtreme, isSolo, isSpectator)}
+        {getTitle(isExtreme, roomIsSolo, isSpectator)}
       </h1>
 
       {/* Info bar */}
@@ -512,9 +546,9 @@ export default function Game() {
             {DIFFICULTY_LABEL[roomState.difficulty]}
           </span>
           <div className={`w-px h-3 ${getBarDividerColor(isExtreme, isDark)}`} />
-          {isSolo ? (
+          {roomIsSolo ? (
             <span className={`text-xs font-bold ${getPlayerNameColor('creator', isExtreme)}`}>
-              {displayName}
+              {creatorName}
             </span>
           ) : (
             <>
@@ -560,7 +594,6 @@ export default function Game() {
           </span>
         </span>
 
-        {/* Código da sala — visível em todos os modos */}
         <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
         <div className="flex items-center gap-2">
           <span className={`text-xs sm:text-sm font-semibold ${getLabelColor(isExtreme, isDark)}`}>
@@ -649,7 +682,7 @@ export default function Game() {
           current={roomState.current}
           solution={roomState.solution}
           selected={selected}
-          opponentSelected={isSolo || isSpectator ? null : opponentSelected}
+          opponentSelected={isSolo ? null : opponentSelected}
           notes={roomState.notes}
           isNoteMode={isNoteMode}
           isExtreme={isExtreme}
@@ -729,10 +762,7 @@ export default function Game() {
 
         <button
           type="button"
-          onClick={() => {
-            if (!isSpectator) sendSystemMessage(`👋 ${displayName} saiu da sala.`);
-            handleLeave();
-          }}
+          onClick={handleLeave}
           className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm transition-colors ${leaveStyle}`}
         >
           Sair

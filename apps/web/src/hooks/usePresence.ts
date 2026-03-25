@@ -18,11 +18,16 @@ interface SpectatorPayload {
   action: 'join' | 'leave';
 }
 
+interface TimerPayload {
+  seconds: number;
+}
+
 export default function usePresence(
   roomId: string | null,
   player: Player | null,
   playerName: string,
-  onOpponentName?: (name: string) => void
+  onOpponentName?: (name: string) => void,
+  onTimerSync?: (seconds: number) => void
 ) {
   const [opponentSelected, setOpponentSelected] = useState<[number, number] | null>(null);
   const [spectators, setSpectators] = useState<string[]>([]);
@@ -55,6 +60,19 @@ export default function usePresence(
     });
   }, [player]);
 
+  // Broadcast do timer — chamado pelo jogador a cada segundo
+  const broadcastTimer = useCallback(
+    (seconds: number) => {
+      if (!player || player === 'spectator') return;
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'timer-sync',
+        payload: { seconds } satisfies TimerPayload,
+      });
+    },
+    [player]
+  );
+
   const announceSpectatorJoin = useCallback(() => {
     if (player !== 'spectator' || !playerNameRef.current) return;
     channelRef.current?.send({
@@ -79,7 +97,7 @@ export default function usePresence(
     const channel = supabase
       .channel(`room-${roomId}-presence`)
       .on('broadcast', { event: 'presence' }, ({ payload }: { payload: PresencePayload }) => {
-        if (payload.player === player) return;
+        if (payload.player === player && player !== 'spectator') return;
         if (payload.row === null || payload.col === null) {
           setOpponentSelected(null);
         } else {
@@ -96,6 +114,10 @@ export default function usePresence(
             payload: { player, name: playerNameRef.current } satisfies NamePayload,
           });
         }
+      })
+      .on('broadcast', { event: 'timer-sync' }, ({ payload }: { payload: TimerPayload }) => {
+        if (player !== 'spectator') return;
+        onTimerSync?.(payload.seconds);
       })
       .on('broadcast', { event: 'spectator' }, ({ payload }: { payload: SpectatorPayload }) => {
         if (payload.action === 'join') {
@@ -127,13 +149,14 @@ export default function usePresence(
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [roomId, player, onOpponentName]);
+  }, [roomId, player, onOpponentName, onTimerSync]);
 
   return {
     opponentSelected,
     spectators,
     broadcastSelection,
     broadcastName,
+    broadcastTimer,
     announceSpectatorJoin,
     announceSpectatorLeave,
   };

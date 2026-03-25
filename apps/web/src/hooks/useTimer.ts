@@ -1,14 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-export default function useTimer(active: boolean, paused = false) {
+export default function useTimer(active: boolean, paused = false, externalSeconds?: number) {
   const [seconds, setSeconds] = useState(0);
   const [unlockedSolo, setUnlockedSolo] = useState(false);
   const [startedManually, setStartedManually] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const isRunning = (active || unlockedSolo) && !paused;
+  // Se vier segundos externos (modo espectador), usa eles diretamente
+  const isExternal = externalSeconds !== undefined;
+  const isRunning = !isExternal && (active || unlockedSolo) && !paused;
 
   useEffect(() => {
+    if (isExternal) return undefined;
+
     if (!isRunning) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -24,13 +28,19 @@ export default function useTimer(active: boolean, paused = false) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning]);
+  }, [isRunning, isExternal]);
+
+  // Atualiza segundos quando vier valor externo
+  useEffect(() => {
+    if (isExternal && externalSeconds !== undefined) {
+      setSeconds(externalSeconds);
+    }
+  }, [isExternal, externalSeconds]);
 
   const unlockSolo = useCallback(() => {
     setUnlockedSolo(true);
   }, []);
 
-  // Inicia o timer manualmente (modo solo — dispara no primeiro clique no tabuleiro)
   const startManually = useCallback(() => {
     if (startedManually) return;
     setStartedManually(true);
@@ -48,7 +58,7 @@ export default function useTimer(active: boolean, paused = false) {
   return {
     seconds,
     formatted: format(seconds),
-    isRunning,
+    isRunning: isExternal ? externalSeconds! > 0 : isRunning,
     unlockedSolo,
     unlockSolo,
     startManually,

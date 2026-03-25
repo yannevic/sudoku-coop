@@ -13,6 +13,11 @@ interface NamePayload {
   name: string;
 }
 
+interface SpectatorPayload {
+  name: string;
+  action: 'join' | 'leave';
+}
+
 export default function usePresence(
   roomId: string | null,
   player: Player | null,
@@ -20,17 +25,17 @@ export default function usePresence(
   onOpponentName?: (name: string) => void
 ) {
   const [opponentSelected, setOpponentSelected] = useState<[number, number] | null>(null);
+  const [spectators, setSpectators] = useState<string[]>([]);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const playerNameRef = useRef(playerName);
 
-  // mantém ref atualizada sem recriar o canal
   useEffect(() => {
     playerNameRef.current = playerName;
   }, [playerName]);
 
   const broadcastSelection = useCallback(
     (row: number | null, col: number | null) => {
-      if (!player) return;
+      if (!player || player === 'spectator') return;
       channelRef.current?.send({
         type: 'broadcast',
         event: 'presence',
@@ -42,10 +47,29 @@ export default function usePresence(
 
   const broadcastName = useCallback(() => {
     if (!player || !playerNameRef.current) return;
+    if (player === 'spectator') return;
     channelRef.current?.send({
       type: 'broadcast',
       event: 'player-name',
       payload: { player, name: playerNameRef.current } satisfies NamePayload,
+    });
+  }, [player]);
+
+  const announceSpectatorJoin = useCallback(() => {
+    if (player !== 'spectator' || !playerNameRef.current) return;
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'spectator',
+      payload: { name: playerNameRef.current, action: 'join' } satisfies SpectatorPayload,
+    });
+  }, [player]);
+
+  const announceSpectatorLeave = useCallback(() => {
+    if (player !== 'spectator' || !playerNameRef.current) return;
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'spectator',
+      payload: { name: playerNameRef.current, action: 'leave' } satisfies SpectatorPayload,
     });
   }, [player]);
 
@@ -65,16 +89,30 @@ export default function usePresence(
       .on('broadcast', { event: 'player-name' }, ({ payload }: { payload: NamePayload }) => {
         if (payload.player === player) return;
         onOpponentName?.(payload.name);
-        // responde com o próprio nome para garantir troca bidirecional
-        channel.send({
-          type: 'broadcast',
-          event: 'player-name',
-          payload: { player, name: playerNameRef.current } satisfies NamePayload,
-        });
+        if (player !== 'spectator') {
+          channel.send({
+            type: 'broadcast',
+            event: 'player-name',
+            payload: { player, name: playerNameRef.current } satisfies NamePayload,
+          });
+        }
+      })
+      .on('broadcast', { event: 'spectator' }, ({ payload }: { payload: SpectatorPayload }) => {
+        if (payload.action === 'join') {
+          setSpectators((prev) => (prev.includes(payload.name) ? prev : [...prev, payload.name]));
+        } else {
+          setSpectators((prev) => prev.filter((n) => n !== payload.name));
+        }
       })
       .subscribe((status) => {
-        // assim que o canal estiver pronto, anuncia o próprio nome
-        if (status === 'SUBSCRIBED') {
+        if (status !== 'SUBSCRIBED') return;
+        if (player === 'spectator') {
+          channel.send({
+            type: 'broadcast',
+            event: 'spectator',
+            payload: { name: playerNameRef.current, action: 'join' } satisfies SpectatorPayload,
+          });
+        } else {
           channel.send({
             type: 'broadcast',
             event: 'player-name',
@@ -91,5 +129,12 @@ export default function usePresence(
     };
   }, [roomId, player, onOpponentName]);
 
-  return { opponentSelected, broadcastSelection, broadcastName };
+  return {
+    opponentSelected,
+    spectators,
+    broadcastSelection,
+    broadcastName,
+    announceSpectatorJoin,
+    announceSpectatorLeave,
+  };
 }

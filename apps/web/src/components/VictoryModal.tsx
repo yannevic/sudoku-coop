@@ -63,7 +63,6 @@ export default function VictoryModal({
         style={{ animation: 'pop-in 0.4s ease forwards' }}
         className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
       >
-        {/* Header roxo */}
         <div className="bg-[#9b5fa5] px-6 py-6 flex flex-col items-center gap-2">
           <Trophy size={36} className="text-yellow-300" />
           <h2 className="text-white font-bold text-2xl">Puzzle resolvido!</h2>
@@ -72,9 +71,7 @@ export default function VictoryModal({
           </p>
         </div>
 
-        {/* Conteúdo */}
         <div className="px-6 py-6 flex flex-col gap-4">
-          {/* Nome */}
           <div className="bg-[#fdf6fb] rounded-2xl px-4 py-3 text-center">
             <p className="text-[10px] text-[#c9a0d0] uppercase font-semibold tracking-widest mb-1">
               {isSolo ? 'Jogador' : 'Dupla'}
@@ -82,7 +79,6 @@ export default function VictoryModal({
             <p className="text-[#7a4a84] font-bold text-base leading-snug">{duoName}</p>
           </div>
 
-          {/* Tempo, dificuldade e erros */}
           <div className="flex gap-3">
             <div className="flex-1 bg-[#fdf6fb] rounded-2xl px-4 py-3 text-center">
               <p className="text-[10px] text-[#c9a0d0] uppercase font-semibold tracking-widest mb-1">
@@ -110,7 +106,6 @@ export default function VictoryModal({
             </div>
           </div>
 
-          {/* Botões */}
           <button
             type="button"
             onClick={onShowLeaderboard}

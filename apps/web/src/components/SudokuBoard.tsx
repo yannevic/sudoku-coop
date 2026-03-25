@@ -16,8 +16,9 @@ interface SudokuBoardProps {
 function getBadgeStyle(done: boolean, isExtreme: boolean): string {
   if (done && isExtreme) return 'bg-[#1a0505] text-[#3a1010] border border-[#2a0808]';
   if (done) return 'bg-[#ddb8ea] text-[#b088ba] border border-[#c9a0d0]';
-  if (isExtreme) return 'bg-[#1a1a1a] text-[#ef4444] border border-[#2a2a2a]';
-  return 'bg-[#fce4f3] text-[#9b5fa5] border border-[#e9b8d9]';
+  if (isExtreme)
+    return 'bg-[#1a1a1a] text-[#ef4444] border border-[#2a2a2a] hover:bg-[#2a2a2a] cursor-pointer';
+  return 'bg-[#fce4f3] text-[#9b5fa5] border border-[#e9b8d9] hover:bg-[#f0d6eb] cursor-pointer';
 }
 
 function getCompletedNumbers(puzzle: Board, current: CurrentBoard, solution: Board): Set<number> {
@@ -35,6 +36,20 @@ function getCompletedNumbers(puzzle: Board, current: CurrentBoard, solution: Boa
     if (count === 9) completed.add(num);
   });
   return completed;
+}
+
+function findFirstCellWithNumber(
+  num: number,
+  puzzle: Board,
+  current: CurrentBoard
+): [number, number] | null {
+  for (let r = 0; r < 9; r += 1) {
+    for (let c = 0; c < 9; c += 1) {
+      const value = puzzle[r][c] !== null ? puzzle[r][c] : (current[r][c]?.value ?? null);
+      if (value === num) return [r, c];
+    }
+  }
+  return null;
 }
 
 export default function SudokuBoard({
@@ -82,6 +97,14 @@ export default function SudokuBoard({
     return getValue(row, col) === selectedValue;
   };
 
+  const handleBadgeClick = (num: number, done: boolean) => {
+    if (done) return;
+    const cell = findFirstCellWithNumber(num, puzzle, current);
+    if (cell) {
+      onSelect(cell[0], cell[1]);
+    }
+  };
+
   const completedNumbers = getCompletedNumbers(puzzle, current, solution);
   const boardBorder = isExtreme ? 'border-[#dc2626]' : 'border-[#9b5fa5]';
 
@@ -116,9 +139,12 @@ export default function SudokuBoard({
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => {
           const done = completedNumbers.has(num);
           return (
-            <div
+            <button
               key={num}
-              title={done ? `${num} completo!` : `${num}`}
+              type="button"
+              title={done ? `${num} completo!` : `Destacar ${num}`}
+              onClick={() => handleBadgeClick(num, done)}
+              disabled={done}
               className={`
                 w-5 h-5 sm:w-6 sm:h-6
                 flex items-center justify-center
@@ -128,7 +154,7 @@ export default function SudokuBoard({
               `}
             >
               {num}
-            </div>
+            </button>
           );
         })}
       </div>

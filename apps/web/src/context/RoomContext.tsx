@@ -11,7 +11,7 @@ import supabase from '../utils/supabase';
 import { generatePuzzle, createEmptyNotes, createEmptyCurrentBoard } from '../utils/sudoku';
 import type { Board, Difficulty, Notes, Player, CurrentBoard } from '../utils/sudoku';
 
-export type GameMode = 'solo' | 'duo';
+export type GameMode = 'solo' | 'duo' | 'spectator';
 
 interface RoomState {
   puzzle: Board;
@@ -77,7 +77,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       const current = createEmptyCurrentBoard();
       const notes = createEmptyNotes();
 
-      // Modo solo: sem Supabase, estado apenas local
       if (gameMode === 'solo') {
         setRoomId(SOLO_ROOM_ID);
         setRoomState({
@@ -87,7 +86,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
           notes,
           difficulty,
           player: 'creator',
-          playerCount: 2, // já começa como 2 para o timer não ficar bloqueado
+          playerCount: 2,
         });
         setLoading(false);
         return;
@@ -127,57 +126,75 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     [gameMode]
   );
 
-  const joinRoom = useCallback(async (code: string) => {
-    setLoading(true);
-    setError(null);
+  const joinRoom = useCallback(
+    async (code: string) => {
+      setLoading(true);
+      setError(null);
 
-    const { data, error: err } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('id', code.toUpperCase())
-      .single();
+      const { data, error: err } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', code.toUpperCase())
+        .single();
 
-    if (err || !data) {
-      setError('Sala não encontrada. Verifique o código.');
+      if (err || !data) {
+        setError('Sala não encontrada. Verifique o código.');
+        setLoading(false);
+        return;
+      }
+
+      if (data.finished) {
+        setError('Esta sala já terminou. Crie uma nova!');
+        setLoading(false);
+        return;
+      }
+
+      const notes: Notes = (data.notes as number[][][]).map((row) =>
+        row.map((cell) => new Set(cell))
+      );
+
+      if (gameMode === 'spectator') {
+        // Espectador não incrementa player_count
+        setRoomId(data.id);
+        setRoomState({
+          puzzle: data.puzzle,
+          solution: data.solution,
+          current: data.current,
+          notes,
+          difficulty: data.difficulty,
+          player: 'spectator',
+          playerCount: data.player_count,
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (data.player_count >= 2) {
+        setError('Esta sala já está cheia. Crie uma nova!');
+        setLoading(false);
+        return;
+      }
+
+      await supabase.from('rooms').update({ player_count: 2 }).eq('id', code.toUpperCase());
+
+      setRoomId(data.id);
+      setRoomState({
+        puzzle: data.puzzle,
+        solution: data.solution,
+        current: data.current,
+        notes,
+        difficulty: data.difficulty,
+        player: 'joiner',
+        playerCount: 2,
+      });
       setLoading(false);
-      return;
-    }
-
-    if (data.finished) {
-      setError('Esta sala já terminou. Crie uma nova!');
-      setLoading(false);
-      return;
-    }
-
-    if (data.player_count >= 2) {
-      setError('Esta sala já está cheia. Crie uma nova!');
-      setLoading(false);
-      return;
-    }
-
-    const notes: Notes = (data.notes as number[][][]).map((row) =>
-      row.map((cell) => new Set(cell))
-    );
-
-    await supabase.from('rooms').update({ player_count: 2 }).eq('id', code.toUpperCase());
-
-    setRoomId(data.id);
-    setRoomState({
-      puzzle: data.puzzle,
-      solution: data.solution,
-      current: data.current,
-      notes,
-      difficulty: data.difficulty,
-      player: 'joiner',
-      playerCount: 2,
-    });
-    setLoading(false);
-  }, []);
+    },
+    [gameMode]
+  );
 
   const updateRoom = useCallback(
     async (current: CurrentBoard, notes: Notes) => {
       if (!roomId) return;
-      // Modo solo não sincroniza com Supabase
       if (roomId === SOLO_ROOM_ID) return;
       await supabase
         .from('rooms')
@@ -193,6 +210,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const decrementPlayerCount = useCallback(async () => {
     if (!roomId || !roomState) return;
     if (roomId === SOLO_ROOM_ID) return;
+    if (roomState.player === 'spectator') return;
     const next = Math.max(0, roomState.playerCount - 1);
     await supabase.from('rooms').update({ player_count: next }).eq('id', roomId);
   }, [roomId, roomState]);
@@ -211,7 +229,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!roomId) return undefined;
-    // Modo solo não usa realtime
     if (roomId === SOLO_ROOM_ID) return undefined;
 
     const channel = supabase

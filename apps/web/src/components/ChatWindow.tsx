@@ -417,10 +417,19 @@ function getBubbleStyle(msg: ChatMessage, self: Player): string {
   if (msg.player === self) {
     return 'bg-[#f37eb9] text-white rounded-2xl rounded-br-sm px-3 py-2 max-w-[75%] text-sm break-words';
   }
+  if (msg.player === 'spectator') {
+    return 'bg-white border border-gray-200 text-gray-400 rounded-2xl rounded-bl-sm px-3 py-2 max-w-[75%] text-sm break-words';
+  }
   if (msg.player === 'creator') {
     return 'bg-white border border-[#e9b8d9] text-[#9b5fa5] rounded-2xl rounded-bl-sm px-3 py-2 max-w-[75%] text-sm break-words';
   }
   return 'bg-white border border-[#bae6fd] text-[#22a5e0] rounded-2xl rounded-bl-sm px-3 py-2 max-w-[75%] text-sm break-words';
+}
+
+function getNameStyle(msg: ChatMessage, self: Player): string {
+  if (msg.player === self) return 'text-[10px] text-gray-400 px-1';
+  if (msg.player === 'spectator') return 'text-[10px] text-gray-300 px-1';
+  return 'text-[10px] text-gray-400 px-1';
 }
 
 export default function ChatWindow({
@@ -453,14 +462,12 @@ export default function ChatWindow({
     [onOpenChange]
   );
 
-  // rola ao fim quando chegam novas mensagens
   useEffect(() => {
     if (!isMinimized) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isMinimized]);
 
-  // rola ao fim ao expandir o chat
   useEffect(() => {
     if (!isMinimized) {
       setTimeout(() => {
@@ -469,7 +476,6 @@ export default function ChatWindow({
     }
   }, [isMinimized]);
 
-  // rola ao fim ao reabrir o chat
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
@@ -487,7 +493,6 @@ export default function ChatWindow({
   const handleMinimize = useCallback(() => {
     setIsMinimized((prev) => {
       const next = !prev;
-      // fecha o picker ao minimizar
       if (next) setShowEmojis(false);
       return next;
     });
@@ -606,7 +611,7 @@ export default function ChatWindow({
                   <span className={getBubbleStyle(msg, player)}>{msg.text}</span>
                 ) : (
                   <>
-                    <span className="text-[10px] text-gray-400 px-1">
+                    <span className={getNameStyle(msg, player)}>
                       {msg.playerName} · {formatTime(msg.timestamp)}
                     </span>
                     <span className={getBubbleStyle(msg, player)}>{msg.text}</span>
@@ -666,7 +671,7 @@ export default function ChatWindow({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Mensagem..."
+              placeholder={player === 'spectator' ? 'Mensagem como espectador...' : 'Mensagem...'}
               maxLength={200}
               className="flex-1 text-sm bg-[#fdf6fb] border border-[#e9b8d9] rounded-xl px-3 py-1.5 outline-none focus:border-[#9b5fa5] transition-colors placeholder-[#d4a8c7]"
             />

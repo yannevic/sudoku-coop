@@ -94,20 +94,29 @@ export default function Home() {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [pasteHint, setPasteHint] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [nameTouched, setNameTouched] = useState(false);
 
   const isExtreme = difficulty === 'extreme';
   const diffConfig = isDark ? DIFFICULTY_CONFIG_DARK : DIFFICULTY_CONFIG;
+  const isNameValid = playerName.trim().length > 0;
+  const showNameError = nameTouched && !isNameValid;
+  const isSolo = gameMode === 'solo';
+  const isSpectator = gameMode === 'spectator';
 
   useEffect(() => {
     if (roomId) navigate('/game');
   }, [roomId, navigate]);
 
   const handleCreate = async () => {
+    setNameTouched(true);
+    if (!isNameValid) return;
     await createRoom(difficulty);
     navigate('/game');
   };
 
   const handleJoin = async () => {
+    setNameTouched(true);
+    if (!isNameValid) return;
     await joinRoom(code);
   };
 
@@ -127,9 +136,6 @@ export default function Home() {
     }
   }, []);
 
-  const isNameValid = playerName.trim().length > 0;
-  const isSolo = gameMode === 'solo';
-
   function getCreateLabel(): string {
     if (loading) return 'Criando...';
     if (isExtreme) return isSolo ? '💀 Jogar solo extremo' : '💀 Criar sala extrema';
@@ -138,6 +144,7 @@ export default function Home() {
 
   function getJoinLabel(): string {
     if (loading) return 'Entrando...';
+    if (isSpectator) return isExtreme ? '💀 Assistir sala' : '👁️ Assistir sala';
     if (isExtreme) return '💀 Entrar na sala';
     return '💙 Entrar na sala';
   }
@@ -172,7 +179,9 @@ export default function Home() {
     return 'bg-[#f0d6eb]';
   }
 
-  function getInputStyle(): string {
+  function getInputStyle(hasError: boolean): string {
+    if (hasError)
+      return 'border border-red-400 text-gray-700 placeholder-[#d4a8c7] focus:border-red-500';
     if (isExtreme)
       return 'bg-[#1a1a1a] border border-[#dc2626]/40 text-white placeholder-[#6b2121] focus:border-[#dc2626]';
     if (isDark)
@@ -218,6 +227,11 @@ export default function Home() {
   }
 
   function getJoinButtonStyle(): string {
+    if (isSpectator) {
+      if (isExtreme) return 'bg-[#4a1515] hover:bg-[#5a1f1f]';
+      if (isDark) return 'bg-[#374151] hover:bg-[#4b5563]';
+      return 'bg-[#6b7280] hover:bg-[#4b5563]';
+    }
     if (isExtreme) return 'bg-[#7f1d1d] hover:bg-[#991b1b]';
     if (isDark) return 'bg-[#7a4a84] hover:bg-[#9b5fa5]';
     return 'bg-[#9b5fa5] hover:bg-[#7a4a84]';
@@ -237,13 +251,21 @@ export default function Home() {
 
   function getModeBtnStyle(mode: GameMode): string {
     const isSelected = gameMode === mode;
+    if (mode === 'spectator') {
+      if (isSelected && isExtreme) return 'bg-[#374151] text-white';
+      if (isSelected) return 'bg-[#6b7280] text-white';
+      if (isExtreme) return 'bg-[#1a1a1a] text-[#4a4a4a] border border-[#2a2a2a] hover:bg-[#222]';
+      if (isDark) return 'bg-[#0f0f23] text-[#44446a] border border-[#2a2a4a] hover:bg-[#1a1a3a]';
+      return 'bg-white text-gray-300 border border-gray-200 hover:bg-gray-50';
+    }
     if (isSelected && isExtreme) return 'bg-[#dc2626] text-white';
-    if (isSelected && isDark) return 'bg-[#f37eb9] text-white';
     if (isSelected) return 'bg-[#f37eb9] text-white';
     if (isExtreme) return 'bg-[#1a1a1a] text-[#666] border border-[#333] hover:bg-[#222]';
     if (isDark) return 'bg-[#0f0f23] text-[#aaaaaa] border border-[#2a2a4a] hover:bg-[#1a1a3a]';
     return 'bg-[#fce4f3] text-[#9b5fa5] hover:bg-[#f0d6eb]';
   }
+
+  const needsCode = !isSolo;
 
   return (
     <div
@@ -323,12 +345,17 @@ export default function Home() {
             type="text"
             placeholder="Como você quer ser chamado?"
             value={playerName}
-            onChange={(e) => setPlayerName(e.target.value.slice(0, 20))}
+            onChange={(e) => {
+              setPlayerName(e.target.value.slice(0, 20));
+              if (nameTouched && e.target.value.trim().length > 0) setNameTouched(false);
+            }}
+            onBlur={() => setNameTouched(true)}
             maxLength={20}
-            className={`w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-colors ${getInputStyle()}`}
+            className={`w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-colors ${getInputStyle(showNameError)}`}
           />
+          {showNameError && <p className="text-red-400 text-xs font-medium">Nome obrigatório</p>}
 
-          {/* Toggle Solo / Dupla */}
+          {/* Toggle Solo / Dupla / Espectador */}
           <div className="flex gap-2 mt-1">
             {(['solo', 'duo'] as GameMode[]).map((m) => (
               <button
@@ -341,113 +368,130 @@ export default function Home() {
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => setGameMode('spectator')}
+            className={`w-full py-1.5 rounded-xl text-xs font-medium transition-colors ${getModeBtnStyle('spectator')}`}
+          >
+            👁️ Espectador
+          </button>
         </div>
 
         <div className={`h-px ${getDividerColor()}`} />
 
-        {/* Dificuldade */}
-        <div className="flex flex-col gap-2">
-          <span className={`text-sm font-medium ${getLabelColor()}`}>Dificuldade</span>
-          <div className="flex gap-2">
-            {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDifficulty(d)}
-                className={`flex-1 py-1 rounded text-sm font-medium transition-colors ${
-                  difficulty === d ? diffConfig[d].active : diffConfig[d].inactive
-                }`}
-              >
-                {diffConfig[d].label}
-              </button>
-            ))}
+        {/* Dificuldade — só para solo e duo */}
+        {!isSpectator && (
+          <div className="flex flex-col gap-2">
+            <span className={`text-sm font-medium ${getLabelColor()}`}>Dificuldade</span>
+            <div className="flex gap-2">
+              {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDifficulty(d)}
+                  className={`flex-1 py-1 rounded text-sm font-medium transition-colors ${
+                    difficulty === d ? diffConfig[d].active : diffConfig[d].inactive
+                  }`}
+                >
+                  {diffConfig[d].label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setDifficulty('extreme')}
+              className={`w-full py-2 rounded text-sm font-bold transition-all duration-200 tracking-widest ${
+                difficulty === 'extreme'
+                  ? DIFFICULTY_CONFIG.extreme.active
+                  : DIFFICULTY_CONFIG.extreme.inactive
+              }`}
+            >
+              {DIFFICULTY_CONFIG.extreme.label}
+            </button>
           </div>
+        )}
+
+        {/* Botão criar — só para solo e duo */}
+        {!isSpectator && (
           <button
             type="button"
-            onClick={() => setDifficulty('extreme')}
-            className={`w-full py-2 rounded text-sm font-bold transition-all duration-200 tracking-widest ${
-              difficulty === 'extreme'
-                ? DIFFICULTY_CONFIG.extreme.active
-                : DIFFICULTY_CONFIG.extreme.inactive
-            }`}
+            onClick={handleCreate}
+            disabled={loading}
+            className={`w-full py-3 text-white rounded-xl font-semibold transition-all disabled:opacity-50 ${getCreateButtonStyle()}`}
           >
-            {DIFFICULTY_CONFIG.extreme.label}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                {getCreateLabel()}
+              </span>
+            ) : (
+              getCreateLabel()
+            )}
           </button>
-        </div>
+        )}
 
-        <button
-          type="button"
-          onClick={handleCreate}
-          disabled={loading || !isNameValid}
-          className={`w-full py-3 text-white rounded-xl font-semibold transition-all disabled:opacity-50 ${getCreateButtonStyle()}`}
-          title={!isNameValid ? 'Preencha seu nome primeiro' : undefined}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 size={16} className="animate-spin" />
-              {getCreateLabel()}
-            </span>
-          ) : (
-            getCreateLabel()
-          )}
-        </button>
+        {/* Separador "ou" — só para duo */}
+        {!isSolo && !isSpectator && (
+          <div className="flex items-center gap-2">
+            <div className={`flex-1 h-px ${getOrDividerColor()}`} />
+            <span className={`text-xs ${getOrTextColor()}`}>ou</span>
+            <div className={`flex-1 h-px ${getOrDividerColor()}`} />
+          </div>
+        )}
 
-        {/* Entrada na sala — só no modo Dupla */}
-        {!isSolo && (
-          <>
-            <div className="flex items-center gap-2">
-              <div className={`flex-1 h-px ${getOrDividerColor()}`} />
-              <span className={`text-xs ${getOrTextColor()}`}>ou</span>
-              <div className={`flex-1 h-px ${getOrDividerColor()}`} />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Código da sala"
-                  value={code}
-                  onChange={(e) =>
-                    setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())
-                  }
-                  maxLength={4}
-                  className={`w-full px-4 py-3 rounded-xl text-center text-lg font-bold tracking-widest focus:outline-none transition-colors pr-10 ${getCodeInputStyle()}`}
-                />
-                <button
-                  type="button"
-                  onClick={tryPasteFromClipboard}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${getPasteButtonColor()}`}
-                  title="Colar código"
-                >
-                  <ClipboardPaste size={16} />
-                </button>
-                {pasteHint && (
-                  <span
-                    className={`absolute -bottom-5 left-0 right-0 text-center text-[10px] font-medium ${getPasteHintColor()}`}
-                  >
-                    Código colado ✓
-                  </span>
-                )}
-              </div>
-
+        {/* Entrada na sala — duo e espectador */}
+        {needsCode && (
+          <div className="flex flex-col gap-2">
+            {isSpectator && (
+              <p className={`text-xs text-center ${getLabelColor()}`}>
+                Digite o código da sala que deseja assistir
+              </p>
+            )}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Código da sala"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
+                maxLength={4}
+                className={`w-full px-4 py-3 rounded-xl text-center text-lg font-bold tracking-widest focus:outline-none transition-colors pr-10 ${getCodeInputStyle()}`}
+              />
               <button
                 type="button"
-                onClick={handleJoin}
-                disabled={loading || code.length < 4 || !isNameValid}
-                className={`w-full py-3 text-white rounded-xl font-semibold transition-all disabled:opacity-50 mt-2 ${getJoinButtonStyle()}`}
-                title={!isNameValid ? 'Preencha seu nome primeiro' : undefined}
+                onClick={tryPasteFromClipboard}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${getPasteButtonColor()}`}
+                title="Colar código"
               >
-                {getJoinLabel()}
+                <ClipboardPaste size={16} />
               </button>
+              {pasteHint && (
+                <span
+                  className={`absolute -bottom-5 left-0 right-0 text-center text-[10px] font-medium ${getPasteHintColor()}`}
+                >
+                  Código colado ✓
+                </span>
+              )}
             </div>
-          </>
+
+            <button
+              type="button"
+              onClick={handleJoin}
+              disabled={loading || code.length < 4}
+              className={`w-full py-3 text-white rounded-xl font-semibold transition-all disabled:opacity-50 mt-2 ${getJoinButtonStyle()}`}
+            >
+              {getJoinLabel()}
+            </button>
+          </div>
         )}
 
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
       </div>
 
       {showLeaderboard && (
-        <LeaderboardModal onClose={() => setShowLeaderboard(false)} initialMode={gameMode} />
+        <LeaderboardModal
+          onClose={() => setShowLeaderboard(false)}
+          initialMode={isSolo ? 'solo' : 'duo'}
+        />
       )}
 
       <p className={`text-[10px] font-medium transition-colors duration-500 ${getFooterColor()}`}>

@@ -7,6 +7,12 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
+function getDisplayName(name: string, player: Player | null): string {
+  const base = name || 'Anônimo';
+  if (player === 'spectator') return `${base} (Espectador)`;
+  return base;
+}
+
 export default function useChat(
   roomId: string | null,
   player: Player | null,
@@ -53,7 +59,7 @@ export default function useChat(
         id: generateId(),
         text: text.trim(),
         player,
-        playerName: playerName || 'Anônimo',
+        playerName: getDisplayName(playerName, player),
         type: 'user',
         timestamp: Date.now(),
       };
@@ -92,10 +98,11 @@ export default function useChat(
 
   const announceJoin = useCallback(() => {
     if (!roomId || !player) return;
-    const name = playerName || 'Anônimo';
+    const name = getDisplayName(playerName, player);
+    const emoji = player === 'spectator' ? '👁️' : '🎮';
     const msg: ChatMessage = {
       id: generateId(),
-      text: `🎮 ${name} entrou na sala!`,
+      text: `${emoji} ${name} entrou na sala!`,
       player: 'system',
       playerName: 'Sistema',
       type: 'system',

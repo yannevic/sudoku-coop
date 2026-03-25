@@ -55,7 +55,6 @@ function getErrorColor(errorCount: number, isExtreme: boolean): string {
   return 'text-red-400';
 }
 
-// Cache separado por mode+difficulty
 type CacheKey = `${LeaderboardMode}-${Difficulty}`;
 
 export default function LeaderboardModal({

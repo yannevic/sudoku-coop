@@ -198,7 +198,7 @@ export function createEmptyNotes(): Notes {
   return Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set<number>()));
 }
 
-export type Player = 'creator' | 'joiner';
+export type Player = 'creator' | 'joiner' | 'spectator';
 
 export interface CellState {
   value: number;

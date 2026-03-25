@@ -45,8 +45,6 @@ interface RoomContextType {
 
 const RoomContext = createContext<RoomContextType | null>(null);
 
-const SOLO_ROOM_ID = '__solo__';
-
 function generateRoomCode(): string {
   return Math.random().toString(36).substring(2, 6).toUpperCase();
 }
@@ -76,24 +74,10 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       const { puzzle, solution } = generatePuzzle(difficulty);
       const current = createEmptyCurrentBoard();
       const notes = createEmptyNotes();
-
-      if (gameMode === 'solo') {
-        setRoomId(SOLO_ROOM_ID);
-        setRoomState({
-          puzzle,
-          solution,
-          current,
-          notes,
-          difficulty,
-          player: 'creator',
-          playerCount: 2,
-        });
-        setLoading(false);
-        return;
-      }
-
       const id = generateRoomCode();
 
+      // Solo e duo criam sala no Supabase normalmente
+      // Solo usa player_count: 1 mas aceita espectadores via realtime
       const { error: err } = await supabase.from('rooms').insert({
         id,
         puzzle,
@@ -119,7 +103,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
         notes,
         difficulty,
         player: 'creator',
-        playerCount: 1,
+        // Solo começa com playerCount 1 — timer inicia no primeiro clique, não ao atingir 2
+        playerCount: gameMode === 'solo' ? 1 : 1,
       });
       setLoading(false);
     },
@@ -195,7 +180,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const updateRoom = useCallback(
     async (current: CurrentBoard, notes: Notes) => {
       if (!roomId) return;
-      if (roomId === SOLO_ROOM_ID) return;
       await supabase
         .from('rooms')
         .update({
@@ -209,7 +193,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   const decrementPlayerCount = useCallback(async () => {
     if (!roomId || !roomState) return;
-    if (roomId === SOLO_ROOM_ID) return;
     if (roomState.player === 'spectator') return;
     const next = Math.max(0, roomState.playerCount - 1);
     await supabase.from('rooms').update({ player_count: next }).eq('id', roomId);
@@ -217,7 +200,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   const markRoomFinished = useCallback(async () => {
     if (!roomId) return;
-    if (roomId === SOLO_ROOM_ID) return;
     await supabase.from('rooms').update({ finished: true }).eq('id', roomId);
   }, [roomId]);
 
@@ -229,7 +211,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!roomId) return undefined;
-    if (roomId === SOLO_ROOM_ID) return undefined;
 
     const channel = supabase
       .channel(`room-${roomId}`)

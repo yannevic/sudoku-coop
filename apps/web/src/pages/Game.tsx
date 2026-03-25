@@ -225,11 +225,9 @@ export default function Game() {
   const playerCount = roomState?.playerCount ?? 1;
   const isExtreme = roomState?.difficulty === 'extreme';
 
-  // Solo não usa canais — espectador e duo usam normalmente
-  const channelRoomId = isSolo ? null : roomId;
-
+  // Todos os modos usam canais agora — solo tem sala real no Supabase
   const { messages, sendMessage, sendSystemMessage, announceJoin, unreadCount, setIsOpen } =
-    useChat(channelRoomId, player, playerName, (name) => setJoinerName(name));
+    useChat(roomId, player, playerName, (name) => setJoinerName(name));
 
   const {
     opponentSelected,
@@ -238,11 +236,13 @@ export default function Game() {
     broadcastName,
     announceSpectatorJoin,
     announceSpectatorLeave,
-  } = usePresence(channelRoomId, player, playerName, (name) => {
+  } = usePresence(roomId, player, playerName, (name) => {
     setOpponentName(name);
     if (player === 'creator') setJoinerName(name);
   });
 
+  // Solo: timer inicia no primeiro clique (startManually), ignora playerCount
+  // Duo: timer inicia quando playerCount >= 2
   const {
     seconds,
     formatted,
@@ -264,14 +264,14 @@ export default function Game() {
   }, [roomId, navigate]);
 
   useEffect(() => {
-    if (!roomState || hasAnnouncedRef.current || isSolo) return;
+    if (!roomState || hasAnnouncedRef.current) return;
     hasAnnouncedRef.current = true;
     if (isSpectator) {
       announceJoin();
       announceSpectatorJoin();
     } else {
       announceJoin();
-      broadcastName();
+      if (!isSolo) broadcastName();
     }
   }, [roomState, announceJoin, broadcastName, isSolo, isSpectator, announceSpectatorJoin]);
 
@@ -373,7 +373,7 @@ export default function Game() {
   }, [handleKeyDown]);
 
   useEffect(() => {
-    if (!roomId || isSolo) return undefined;
+    if (!roomId) return undefined;
 
     const handleBeforeUnload = () => {
       if (isSpectator) {
@@ -393,7 +393,6 @@ export default function Game() {
     displayName,
     sendSystemMessage,
     decrementPlayerCount,
-    isSolo,
     isSpectator,
     announceSpectatorLeave,
   ]);
@@ -447,7 +446,7 @@ export default function Game() {
     setShowLeaderboard(false);
     showVictoryRef.current = false;
     hasAnnouncedRef.current = false;
-    if (!isSolo && !isSpectator) decrementPlayerCount();
+    if (!isSpectator) decrementPlayerCount();
     if (isSpectator) announceSpectatorLeave();
     leaveRoom();
     navigate('/');
@@ -502,11 +501,10 @@ export default function Game() {
         {getTitle(isExtreme, isSolo, isSpectator)}
       </h1>
 
-      {/* Info bar: dificuldade, players, erros */}
+      {/* Info bar */}
       <div
         className={`flex flex-col items-center gap-1 px-4 py-2 rounded-2xl relative z-10 ${getBarBg(isExtreme, isDark)} shadow-sm`}
       >
-        {/* Linha principal */}
         <div className="flex items-center gap-2">
           <span
             className={`text-xs font-bold tracking-widest uppercase ${getLabelColor(isExtreme, isDark)}`}
@@ -541,7 +539,6 @@ export default function Game() {
           )}
         </div>
 
-        {/* Linha de espectadores — só aparece se tiver algum */}
         {spectators.length > 0 && (
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-gray-400">👁️ {spectators.join(', ')}</span>
@@ -563,35 +560,30 @@ export default function Game() {
           </span>
         </span>
 
-        {!isSolo && (
-          <>
-            <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
-            <div className="flex items-center gap-2">
-              <span
-                className={`text-xs sm:text-sm font-semibold ${getLabelColor(isExtreme, isDark)}`}
-              >
-                Sala:
-              </span>
-              <span
-                className={`font-bold tracking-widest text-base sm:text-lg ${getRoomCodeColor(isExtreme, isDark)}`}
-              >
-                {roomId}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(roomId ?? '');
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className={`transition-colors ${getCopyButtonColor(isExtreme, isDark)}`}
-                title="Copiar código"
-              >
-                {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-              </button>
-            </div>
-          </>
-        )}
+        {/* Código da sala — visível em todos os modos */}
+        <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
+        <div className="flex items-center gap-2">
+          <span className={`text-xs sm:text-sm font-semibold ${getLabelColor(isExtreme, isDark)}`}>
+            Sala:
+          </span>
+          <span
+            className={`font-bold tracking-widest text-base sm:text-lg ${getRoomCodeColor(isExtreme, isDark)}`}
+          >
+            {roomId}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(roomId ?? '');
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            className={`transition-colors ${getCopyButtonColor(isExtreme, isDark)}`}
+            title="Copiar código"
+          >
+            {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+          </button>
+        </div>
 
         {!isExtreme && (
           <>
@@ -665,7 +657,6 @@ export default function Game() {
         />
       </div>
 
-      {/* Teclado numérico mobile — escondido para espectador */}
       {!isSpectator && (
         <div className="grid grid-cols-9 gap-1 w-full max-w-[288px] sm:hidden relative z-10">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
@@ -681,7 +672,6 @@ export default function Game() {
         </div>
       )}
 
-      {/* Botão apagar mobile — escondido para espectador */}
       {!isSpectator && (
         <button
           type="button"
@@ -740,7 +730,7 @@ export default function Game() {
         <button
           type="button"
           onClick={() => {
-            if (!isSolo && !isSpectator) sendSystemMessage(`👋 ${displayName} saiu da sala.`);
+            if (!isSpectator) sendSystemMessage(`👋 ${displayName} saiu da sala.`);
             handleLeave();
           }}
           className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm transition-colors ${leaveStyle}`}
@@ -749,16 +739,13 @@ export default function Game() {
         </button>
       </div>
 
-      {/* Chat — disponível para espectador também */}
-      {!isSolo && (
-        <ChatWindow
-          messages={messages}
-          unreadCount={unreadCount}
-          player={roomState.player}
-          onSend={sendMessage}
-          onOpenChange={setIsOpen}
-        />
-      )}
+      <ChatWindow
+        messages={messages}
+        unreadCount={unreadCount}
+        player={roomState.player}
+        onSend={sendMessage}
+        onOpenChange={setIsOpen}
+      />
 
       {showVictory && (
         <VictoryModal

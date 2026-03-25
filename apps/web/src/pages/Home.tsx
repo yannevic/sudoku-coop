@@ -251,18 +251,21 @@ export default function Home() {
 
   function getModeBtnStyle(mode: GameMode): string {
     const isSelected = gameMode === mode;
-    if (mode === 'spectator') {
-      if (isSelected && isExtreme) return 'bg-[#374151] text-white';
-      if (isSelected) return 'bg-[#6b7280] text-white';
-      if (isExtreme) return 'bg-[#1a1a1a] text-[#4a4a4a] border border-[#2a2a2a] hover:bg-[#222]';
-      if (isDark) return 'bg-[#0f0f23] text-[#44446a] border border-[#2a2a4a] hover:bg-[#1a1a3a]';
-      return 'bg-white text-gray-300 border border-gray-200 hover:bg-gray-50';
-    }
     if (isSelected && isExtreme) return 'bg-[#dc2626] text-white';
     if (isSelected) return 'bg-[#f37eb9] text-white';
     if (isExtreme) return 'bg-[#1a1a1a] text-[#666] border border-[#333] hover:bg-[#222]';
     if (isDark) return 'bg-[#0f0f23] text-[#aaaaaa] border border-[#2a2a4a] hover:bg-[#1a1a3a]';
     return 'bg-[#fce4f3] text-[#9b5fa5] hover:bg-[#f0d6eb]';
+  }
+
+  function getSpectatorBtnStyle(): string {
+    const isSelected = gameMode === 'spectator';
+    if (isSelected && isExtreme) return 'bg-[#374151] text-white';
+    if (isSelected) return 'bg-[#6b7280] text-white';
+    // Não selecionado — mais escuro que antes
+    if (isExtreme) return 'bg-[#1a1a1a] text-[#555] border border-[#2a2a2a] hover:bg-[#222]';
+    if (isDark) return 'bg-[#0f0f23] text-[#555566] border border-[#1e1e2e] hover:bg-[#1a1a3a]';
+    return 'bg-[#e5e7eb] text-[#6b7280] border border-[#d1d5db] hover:bg-[#d1d5db]';
   }
 
   const needsCode = !isSolo;
@@ -355,7 +358,7 @@ export default function Home() {
           />
           {showNameError && <p className="text-red-400 text-xs font-medium">Nome obrigatório</p>}
 
-          {/* Toggle Solo / Dupla / Espectador */}
+          {/* Toggle Solo / Dupla */}
           <div className="flex gap-2 mt-1">
             {(['solo', 'duo'] as GameMode[]).map((m) => (
               <button
@@ -368,10 +371,12 @@ export default function Home() {
               </button>
             ))}
           </div>
+
+          {/* Botão Espectador — mais escuro */}
           <button
             type="button"
             onClick={() => setGameMode('spectator')}
-            className={`w-full py-1.5 rounded-xl text-xs font-medium transition-colors ${getModeBtnStyle('spectator')}`}
+            className={`w-full py-1.5 rounded-xl text-xs font-medium transition-colors ${getSpectatorBtnStyle()}`}
           >
             👁️ Espectador
           </button>

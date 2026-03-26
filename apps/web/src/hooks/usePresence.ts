@@ -60,7 +60,6 @@ export default function usePresence(
     });
   }, [player]);
 
-  // Broadcast do timer — chamado pelo jogador a cada segundo
   const broadcastTimer = useCallback(
     (seconds: number) => {
       if (!player || player === 'spectator') return;
@@ -122,6 +121,15 @@ export default function usePresence(
       .on('broadcast', { event: 'spectator' }, ({ payload }: { payload: SpectatorPayload }) => {
         if (payload.action === 'join') {
           setSpectators((prev) => (prev.includes(payload.name) ? prev : [...prev, payload.name]));
+          // Se sou espectador e outro espectador entrou, reenvio meu join
+          // para que o recém-chegado saiba que eu existo
+          if (player === 'spectator' && payload.name !== playerNameRef.current) {
+            channel.send({
+              type: 'broadcast',
+              event: 'spectator',
+              payload: { name: playerNameRef.current, action: 'join' } satisfies SpectatorPayload,
+            });
+          }
         } else {
           setSpectators((prev) => prev.filter((n) => n !== payload.name));
         }

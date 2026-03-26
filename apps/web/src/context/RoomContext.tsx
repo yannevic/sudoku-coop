@@ -75,9 +75,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       const current = createEmptyCurrentBoard();
       const notes = createEmptyNotes();
       const id = generateRoomCode();
+      const roomMode = gameMode === 'solo' ? 'solo' : 'duo';
 
-      // Solo e duo criam sala no Supabase normalmente
-      // Solo usa player_count: 1 mas aceita espectadores via realtime
       const { error: err } = await supabase.from('rooms').insert({
         id,
         puzzle,
@@ -87,6 +86,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
         difficulty,
         player_count: 1,
         finished: false,
+        mode: roomMode,
       });
 
       if (err) {
@@ -103,8 +103,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
         notes,
         difficulty,
         player: 'creator',
-        // Solo começa com playerCount 1 — timer inicia no primeiro clique, não ao atingir 2
-        playerCount: gameMode === 'solo' ? 1 : 1,
+        playerCount: 1,
       });
       setLoading(false);
     },
@@ -139,7 +138,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       );
 
       if (gameMode === 'spectator') {
-        // Espectador não incrementa player_count
+        // Espectador pode entrar em qualquer sala (solo ou duo) que não terminou
         setRoomId(data.id);
         setRoomState({
           puzzle: data.puzzle,
@@ -150,6 +149,13 @@ export function RoomProvider({ children }: { children: ReactNode }) {
           player: 'spectator',
           playerCount: data.player_count,
         });
+        setLoading(false);
+        return;
+      }
+
+      // Jogador dupla não pode entrar em sala solo
+      if (data.mode === 'solo') {
+        setError('Esta é uma sala solo. Entre como espectador para assistir.');
         setLoading(false);
         return;
       }

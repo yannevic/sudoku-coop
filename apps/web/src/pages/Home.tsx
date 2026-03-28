@@ -4,10 +4,10 @@ import { ClipboardPaste, Trophy, Loader2, Moon, Sun } from 'lucide-react';
 import { useRoomContext } from '../context/RoomContext';
 import LeaderboardModal from '../components/LeaderboardModal';
 import type { Difficulty } from '../utils/sudoku';
+import { getDailyDifficulty } from '../utils/sudoku';
 import type { GameMode } from '../context/RoomContext';
 
 const ROOM_CODE_REGEX = /^[A-Z0-9]{4}$/;
-
 function isValidCode(value: string): boolean {
   return ROOM_CODE_REGEX.test(value);
 }
@@ -75,10 +75,19 @@ const TITLE_LETTERS = [
   { id: 'p', char: 'p', offset: -2, rotation: 3, size: 37 },
 ];
 
+function getDailyDateFormatted(): string {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const {
     createRoom,
+    createDailyRoom,
     joinRoom,
     loading,
     error,
@@ -120,6 +129,15 @@ export default function Home() {
     await joinRoom(code);
   };
 
+  const handleDaily = async () => {
+    setNameTouched(true);
+    if (!isNameValid) return;
+    // Daily é sempre solo — força o modo antes de criar
+    setGameMode('daily');
+    await createDailyRoom();
+    navigate('/game');
+  };
+
   const tryPasteFromClipboard = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -132,7 +150,7 @@ export default function Home() {
       setPasteHint(true);
       setTimeout(() => setPasteHint(false), 2000);
     } catch {
-      // Permissão negada ou clipboard vazio — não faz nada
+      /* nada */
     }
   }, []);
 
@@ -149,7 +167,6 @@ export default function Home() {
     return '💙 Entrar na sala';
   }
 
-  // ─── Tema ───────────────────────────────────────────────────────────────
   function getBg(): string {
     if (isExtreme) return 'bg-[#0a0a0a]';
     if (isDark) return 'bg-[#1a1a2e]';
@@ -262,19 +279,30 @@ export default function Home() {
     const isSelected = gameMode === 'spectator';
     if (isSelected && isExtreme) return 'bg-[#374151] text-white';
     if (isSelected) return 'bg-[#6b7280] text-white';
-    // Não selecionado — mais escuro que antes
     if (isExtreme) return 'bg-[#1a1a1a] text-[#555] border border-[#2a2a2a] hover:bg-[#222]';
     if (isDark) return 'bg-[#0f0f23] text-[#555566] border border-[#1e1e2e] hover:bg-[#1a1a3a]';
     return 'bg-[#e5e7eb] text-[#6b7280] border border-[#d1d5db] hover:bg-[#d1d5db]';
+  }
+
+  function getDailyDifficultyLabel(): string {
+    const d = getDailyDifficulty();
+    const labels: Record<string, string> = {
+      easy: 'Fácil',
+      medium: 'Médio',
+      hard: 'Difícil',
+      extreme: 'Extremo',
+    };
+    return labels[d] ?? d;
   }
 
   const needsCode = !isSolo;
 
   return (
     <div
-      className={`min-h-screen flex flex-col items-center justify-center gap-8 p-4 transition-colors duration-500 ${getBg()}`}
+      className={`min-h-screen flex flex-col items-center justify-center gap-4 p-4 transition-colors duration-500 ${getBg()}`}
     >
-      <div className="flex flex-col items-center gap-2">
+      {/* Título */}
+      <div className="flex flex-col items-center gap-1.5">
         {isExtreme ? (
           <h1 className="text-4xl font-bold text-[#ef4444]">💀 Sudoku Extremo</h1>
         ) : (
@@ -322,11 +350,7 @@ export default function Home() {
               type="button"
               onClick={toggleDark}
               title={isDark ? 'Modo claro' : 'Modo escuro'}
-              className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all duration-300 hover:scale-110 active:scale-95 ${
-                isDark
-                  ? 'bg-[#16213e] border border-[#2a2a4a] text-[#f37eb9]'
-                  : 'bg-white border border-[#e9b8d9] text-[#9b5fa5]'
-              }`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all duration-300 hover:scale-110 active:scale-95 ${isDark ? 'bg-[#16213e] border border-[#2a2a4a] text-[#f37eb9]' : 'bg-white border border-[#e9b8d9] text-[#9b5fa5]'}`}
             >
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
             </button>
@@ -334,10 +358,35 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Botão Daily — fofo, pulsante, sempre solo */}
+      {!isExtreme && (
+        <>
+          <style>{`
+            @keyframes daily-pulse {
+              0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.4), 0 4px 15px rgba(249,115,22,0.3); }
+              50% { box-shadow: 0 0 0 8px rgba(249,115,22,0), 0 4px 20px rgba(249,115,22,0.5); }
+            }
+          `}</style>
+          <button
+            type="button"
+            onClick={handleDaily}
+            disabled={loading}
+            style={{ animation: 'daily-pulse 2.5s ease-in-out infinite' }}
+            className="w-full max-w-sm py-3 rounded-2xl font-bold text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 bg-gradient-to-r from-[#f97316] via-[#fb923c] to-[#fbbf24] flex flex-col items-center gap-0.5"
+          >
+            <span className="text-base tracking-wide">☀️ Daily Puzzle</span>
+            <span className="text-xs font-normal opacity-85">
+              {getDailyDateFormatted()} · {getDailyDifficultyLabel()}
+            </span>
+          </button>
+        </>
+      )}
+
+      {/* Card principal */}
       <div
-        className={`rounded-2xl shadow-md p-8 flex flex-col gap-6 w-full max-w-sm transition-all duration-500 ${getCardBg()}`}
+        className={`rounded-2xl shadow-md px-6 py-5 flex flex-col gap-4 w-full max-w-sm transition-all duration-500 ${getCardBg()}`}
       >
-        {/* Campo de nome */}
+        {/* Campo de nome + toggles */}
         <div className="flex flex-col gap-2">
           {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className={`text-sm font-medium ${getLabelColor()}`} htmlFor="player-name">
@@ -354,12 +403,11 @@ export default function Home() {
             }}
             onBlur={() => setNameTouched(true)}
             maxLength={20}
-            className={`w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-colors ${getInputStyle(showNameError)}`}
+            className={`w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition-colors ${getInputStyle(showNameError)}`}
           />
           {showNameError && <p className="text-red-400 text-xs font-medium">Nome obrigatório</p>}
 
-          {/* Toggle Solo / Dupla */}
-          <div className="flex gap-2 mt-1">
+          <div className="flex gap-2 mt-0.5">
             {(['solo', 'duo'] as GameMode[]).map((m) => (
               <button
                 key={m}
@@ -372,7 +420,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Botão Espectador — mais escuro */}
           <button
             type="button"
             onClick={() => setGameMode('spectator')}
@@ -384,7 +431,7 @@ export default function Home() {
 
         <div className={`h-px ${getDividerColor()}`} />
 
-        {/* Dificuldade — só para solo e duo */}
+        {/* Dificuldade */}
         {!isSpectator && (
           <div className="flex flex-col gap-2">
             <span className={`text-sm font-medium ${getLabelColor()}`}>Dificuldade</span>
@@ -394,9 +441,7 @@ export default function Home() {
                   key={d}
                   type="button"
                   onClick={() => setDifficulty(d)}
-                  className={`flex-1 py-1 rounded text-sm font-medium transition-colors ${
-                    difficulty === d ? diffConfig[d].active : diffConfig[d].inactive
-                  }`}
+                  className={`flex-1 py-1 rounded text-sm font-medium transition-colors ${difficulty === d ? diffConfig[d].active : diffConfig[d].inactive}`}
                 >
                   {diffConfig[d].label}
                 </button>
@@ -405,24 +450,20 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setDifficulty('extreme')}
-              className={`w-full py-2 rounded text-sm font-bold transition-all duration-200 tracking-widest ${
-                difficulty === 'extreme'
-                  ? DIFFICULTY_CONFIG.extreme.active
-                  : DIFFICULTY_CONFIG.extreme.inactive
-              }`}
+              className={`w-full py-1.5 rounded text-sm font-bold transition-all duration-200 tracking-widest ${difficulty === 'extreme' ? DIFFICULTY_CONFIG.extreme.active : DIFFICULTY_CONFIG.extreme.inactive}`}
             >
               {DIFFICULTY_CONFIG.extreme.label}
             </button>
           </div>
         )}
 
-        {/* Botão criar — só para solo e duo */}
+        {/* Botão criar */}
         {!isSpectator && (
           <button
             type="button"
             onClick={handleCreate}
             disabled={loading}
-            className={`w-full py-3 text-white rounded-xl font-semibold transition-all disabled:opacity-50 ${getCreateButtonStyle()}`}
+            className={`w-full py-2.5 text-white rounded-xl font-semibold transition-all disabled:opacity-50 ${getCreateButtonStyle()}`}
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -435,7 +476,7 @@ export default function Home() {
           </button>
         )}
 
-        {/* Separador "ou" — só para duo */}
+        {/* Separador ou */}
         {!isSolo && !isSpectator && (
           <div className="flex items-center gap-2">
             <div className={`flex-1 h-px ${getOrDividerColor()}`} />
@@ -444,7 +485,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Entrada na sala — duo e espectador */}
+        {/* Entrada na sala */}
         {needsCode && (
           <div className="flex flex-col gap-2">
             {isSpectator && (
@@ -459,7 +500,7 @@ export default function Home() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
                 maxLength={4}
-                className={`w-full px-4 py-3 rounded-xl text-center text-lg font-bold tracking-widest focus:outline-none transition-colors pr-10 ${getCodeInputStyle()}`}
+                className={`w-full px-4 py-2.5 rounded-xl text-center text-lg font-bold tracking-widest focus:outline-none transition-colors pr-10 ${getCodeInputStyle()}`}
               />
               <button
                 type="button"
@@ -477,12 +518,11 @@ export default function Home() {
                 </span>
               )}
             </div>
-
             <button
               type="button"
               onClick={handleJoin}
               disabled={loading || code.length < 4}
-              className={`w-full py-3 text-white rounded-xl font-semibold transition-all disabled:opacity-50 mt-2 ${getJoinButtonStyle()}`}
+              className={`w-full py-2.5 text-white rounded-xl font-semibold transition-all disabled:opacity-50 mt-1 ${getJoinButtonStyle()}`}
             >
               {getJoinLabel()}
             </button>

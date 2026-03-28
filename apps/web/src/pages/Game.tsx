@@ -10,6 +10,7 @@ import useChat from '../hooks/useChat';
 import useTimer from '../hooks/useTimer';
 import usePresence from '../hooks/usePresence';
 import type { CurrentBoard, Notes } from '../utils/sudoku';
+import type { LeaderboardMode } from '../utils/leaderboard';
 
 function isBoardComplete(
   current: CurrentBoard,
@@ -40,18 +41,15 @@ function clearNotesForCorrectCell(notes: Notes, r: number, c: number, num: numbe
   const next: Notes = notes.map((row) => row.map((cell) => new Set(cell)));
   const boxR = Math.floor(r / 3) * 3;
   const boxC = Math.floor(c / 3) * 3;
-
   for (let i = 0; i < 9; i += 1) {
     next[r][i].delete(num);
     next[i][c].delete(num);
   }
-
   for (let dr = 0; dr < 3; dr += 1) {
     for (let dc = 0; dc < 3; dc += 1) {
       next[boxR + dr][boxC + dc].delete(num);
     }
   }
-
   return next;
 }
 
@@ -73,8 +71,9 @@ function generateParticles(): Particle[] {
   }));
 }
 
-function getPlayerNameColor(p: 'creator' | 'joiner', extreme: boolean): string {
+function getPlayerNameColor(p: 'creator' | 'joiner' | 'spectator', extreme: boolean): string {
   if (p === 'creator') return extreme ? 'text-[#f87171]' : 'text-[#f37eb9]';
+  if (p === 'spectator') return 'text-gray-400';
   return extreme ? 'text-[#fb923c]' : 'text-[#22a5e0]';
 }
 
@@ -179,6 +178,18 @@ function getMobileDeleteStyle(isExtreme: boolean, isDark: boolean): string {
   return 'bg-white text-gray-400 border border-[#e9b8d9]';
 }
 
+function getLeaderboardMode(daily: boolean, solo: boolean): LeaderboardMode {
+  if (daily) return 'daily';
+  if (solo) return 'solo';
+  return 'duo';
+}
+
+function getTitleColor(extreme: boolean, daily: boolean): string {
+  if (extreme) return 'text-[#ef4444]';
+  if (daily) return 'text-[#f97316]';
+  return 'text-[#f37eb9]';
+}
+
 const DIFFICULTY_LABEL: Record<string, string> = {
   easy: 'Fácil',
   medium: 'Médio',
@@ -186,9 +197,15 @@ const DIFFICULTY_LABEL: Record<string, string> = {
   extreme: '💀 Extremo',
 };
 
-function getTitle(isExtreme: boolean, isSolo: boolean, isSpectator: boolean): string {
+function getTitle(
+  isExtreme: boolean,
+  isSoloLike: boolean,
+  isSpectator: boolean,
+  isDaily: boolean
+): string {
   if (isExtreme) return '💀 Sudoku Extremo';
-  if (isSolo) return 'Sudoku Solo 🧍‍♂️';
+  if (isDaily) return 'Daily Puzzle ☀️';
+  if (isSoloLike) return 'Sudoku Solo 🧍‍♂️';
   if (isSpectator) return 'Sudoku Coop 👁️';
   return 'Sudoku Coop 🌸';
 }
@@ -216,12 +233,13 @@ export default function Game() {
   const [joinerName, setJoinerName] = useState('');
   const [errorCount, setErrorCount] = useState(0);
   const [opponentName, setOpponentName] = useState('');
-  // Segundos recebidos via broadcast do jogador (usado pelo espectador)
   const [syncedSeconds, setSyncedSeconds] = useState<number | undefined>(undefined);
 
   const isSolo = gameMode === 'solo';
+  const isDaily = gameMode === 'daily';
   const isSpectator = gameMode === 'spectator';
   const isDuo = gameMode === 'duo';
+  const isSoloLike = isSolo || isDaily;
 
   const player = roomState?.player ?? null;
   const playerCount = roomState?.playerCount ?? 1;
@@ -246,13 +264,11 @@ export default function Game() {
       setOpponentName(name);
       if (player === 'creator') setJoinerName(name);
     },
-    // Callback de sincronização de timer — só usado pelo espectador
     (seconds) => {
       if (isSpectator) setSyncedSeconds(seconds);
     }
   );
 
-  // Jogador: timer local. Espectador: timer externo via syncedSeconds
   const {
     seconds,
     formatted,
@@ -262,19 +278,17 @@ export default function Game() {
     startManually,
     startedManually,
   } = useTimer(
-    isSolo ? false : playerCount >= 2,
+    isSoloLike ? false : playerCount >= 2,
     showVictory,
     isSpectator ? syncedSeconds : undefined
   );
 
-  // Jogador broadcast do timer a cada segundo para espectadores
   useEffect(() => {
     if (isSpectator || !isRunning) return;
     broadcastTimer(seconds);
   }, [seconds, isRunning, isSpectator, broadcastTimer]);
 
   const displayName = playerName.trim() || 'Anônimo';
-
   const hasAnnouncedRef = useRef(false);
   const showVictoryRef = useRef(false);
   const particles = useRef(generateParticles()).current;
@@ -291,16 +305,13 @@ export default function Game() {
       announceSpectatorJoin();
     } else {
       announceJoin();
-      // Solo e duo anunciam o nome para que espectadores vejam o creator
       broadcastName();
     }
   }, [roomState, announceJoin, broadcastName, isSpectator, announceSpectatorJoin]);
 
   useEffect(() => {
     if (!isDuo) return;
-    if (playerCount >= 2 && player === 'creator') {
-      broadcastName();
-    }
+    if (playerCount >= 2 && player === 'creator') broadcastName();
   }, [playerCount, player, broadcastName, isDuo]);
 
   useEffect(() => {
@@ -317,30 +328,23 @@ export default function Game() {
       if (isSpectator) return;
       setSelected([row, col]);
       broadcastSelection(row, col);
-      if (isSolo && !startedManually) {
-        startManually();
-      }
+      if (isSoloLike && !startedManually) startManually();
     },
-    [broadcastSelection, isSolo, isSpectator, startedManually, startManually]
+    [broadcastSelection, isSoloLike, isSpectator, startedManually, startManually]
   );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (isSpectator) return;
-
       if (e.key === 'Tab') {
         e.preventDefault();
         setIsNoteMode((prev) => !prev);
         return;
       }
-
       if (!selected || !roomState) return;
       const [r, c] = selected;
-
       if (isCellLocked(roomState.current, roomState.solution, roomState.puzzle, r, c)) return;
-
       const num = parseInt(e.key, 10);
-
       if (num >= 1 && num <= 9) {
         if (isNoteMode) {
           const nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
@@ -356,7 +360,6 @@ export default function Game() {
             row.map((cell) => (cell ? { ...cell } : null))
           );
           nextCurrent[r][c] = { value: num, player: roomState.player };
-
           let nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
           nextNotes[r][c].clear();
           if (num === roomState.solution[r][c]) {
@@ -364,12 +367,10 @@ export default function Game() {
           } else {
             setErrorCount((prev) => prev + 1);
           }
-
           setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
           updateRoom(nextCurrent, nextNotes);
         }
       }
-
       if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
         const nextCurrent: CurrentBoard = roomState.current.map((row) =>
           row.map((cell) => (cell ? { ...cell } : null))
@@ -393,10 +394,8 @@ export default function Game() {
 
   useEffect(() => {
     if (!roomId) return undefined;
-
     const handleBeforeUnload = () => {
       if (isSpectator) {
-        // Bug 3 fix: espectador também envia mensagem de saída
         sendSystemMessage(`👋 ${displayName} (Espectador) saiu da sala.`);
         announceSpectatorLeave();
       } else {
@@ -404,7 +403,6 @@ export default function Game() {
         decrementPlayerCount();
       }
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -423,7 +421,6 @@ export default function Game() {
       if (!selected || !roomState || isSpectator) return;
       const [r, c] = selected;
       if (isCellLocked(roomState.current, roomState.solution, roomState.puzzle, r, c)) return;
-
       if (isNoteMode) {
         const nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
         if (nextNotes[r][c].has(num)) {
@@ -438,7 +435,6 @@ export default function Game() {
           row.map((cell) => (cell ? { ...cell } : null))
         );
         nextCurrent[r][c] = { value: num, player: roomState.player };
-
         let nextNotes: Notes = roomState.notes.map((row) => row.map((cell) => new Set(cell)));
         nextNotes[r][c].clear();
         if (num === roomState.solution[r][c]) {
@@ -446,7 +442,6 @@ export default function Game() {
         } else {
           setErrorCount((prev) => prev + 1);
         }
-
         setRoomState({ ...roomState, current: nextCurrent, notes: nextNotes });
         updateRoom(nextCurrent, nextNotes);
       }
@@ -457,20 +452,18 @@ export default function Game() {
   if (!roomState) return null;
 
   const waitingForPlayer = isDuo && playerCount < 2 && !unlockedSolo;
-  const soloWaitingFirstClick = isSolo && !startedManually;
-
-  // roomIsSolo: sala é solo quando player_count nunca chegou a 2 (só 1 jogador)
-  // Espectador usa isso para mostrar o título e info bar corretos
-  const roomIsSolo = roomState.playerCount === 1 || isSolo;
+  const soloWaitingFirstClick = isSoloLike && !startedManually;
+  const roomIsSolo = roomState.playerCount === 1 || isSoloLike;
 
   function getCreatorName(): string {
     if (player === 'creator') return displayName;
-    // Espectador ou joiner: nome vem via broadcast
     return opponentName || joinerName || '...';
   }
 
   const creatorName = getCreatorName();
   const joinerDisplayName = player === 'joiner' ? displayName : joinerName || opponentName;
+
+  const leaderboardMode = getLeaderboardMode(isDaily, isSolo);
 
   const resetAndLeave = () => {
     setShowVictory(false);
@@ -486,8 +479,6 @@ export default function Game() {
     navigate('/');
   };
 
-  const handleLeave = resetAndLeave;
-
   const noteActiveStyle = isExtreme ? 'bg-[#dc2626] text-white' : 'bg-[#9b5fa5] text-white';
   const leaveStyle = isExtreme
     ? 'bg-[#7f1d1d] text-white hover:bg-[#991b1b]'
@@ -496,7 +487,7 @@ export default function Game() {
     ? 'text-[#f37eb9] hover:text-[#e06aa5]'
     : 'text-gray-400 hover:text-[#9b5fa5]';
   const timerIconColor = isExtreme ? 'text-[#dc2626]' : 'text-[#f37eb9]';
-  const titleColor = isExtreme ? 'text-[#ef4444]' : 'text-[#f37eb9]';
+  const titleColor = getTitleColor(isExtreme, isDaily);
 
   return (
     <div
@@ -504,13 +495,7 @@ export default function Game() {
     >
       {isExtreme && (
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
-          <style>{`
-            @keyframes float-up {
-              0%   { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
-              80%  { opacity: 0.7; }
-              100% { transform: translateY(-100vh) scale(0.5) rotate(15deg); opacity: 0; }
-            }
-          `}</style>
+          <style>{`@keyframes float-up { 0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; } 80% { opacity: 0.7; } 100% { transform: translateY(-100vh) scale(0.5) rotate(15deg); opacity: 0; } }`}</style>
           {particles.map((p) => (
             <span
               key={p.id}
@@ -532,7 +517,7 @@ export default function Game() {
       )}
 
       <h1 className={`text-2xl sm:text-3xl font-bold ${titleColor} relative z-10`}>
-        {getTitle(isExtreme, roomIsSolo, isSpectator)}
+        {getTitle(isExtreme, roomIsSolo, isSpectator, isDaily)}
       </h1>
 
       {/* Info bar */}
@@ -572,7 +557,6 @@ export default function Game() {
             </>
           )}
         </div>
-
         {spectators.length > 0 && (
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-gray-400">👁️ {spectators.join(', ')}</span>
@@ -587,13 +571,12 @@ export default function Game() {
         <span className={`text-xs sm:text-sm ${getLabelColor(isExtreme, isDark)}`}>
           {isSpectator ? 'Assistindo como ' : 'Jogando como '}
           <span
-            className={`font-bold ${isSpectator ? 'text-gray-400' : getPlayerNameColor(roomState.player === 'spectator' ? 'creator' : roomState.player, isExtreme)}`}
+            className={`font-bold ${isSpectator ? 'text-gray-400' : getPlayerNameColor(roomState.player, isExtreme)}`}
           >
             {displayName}
             {isSpectator && ' (Espectador)'}
           </span>
         </span>
-
         <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
         <div className="flex items-center gap-2">
           <span className={`text-xs sm:text-sm font-semibold ${getLabelColor(isExtreme, isDark)}`}>
@@ -617,7 +600,6 @@ export default function Game() {
             {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
           </button>
         </div>
-
         {!isExtreme && (
           <>
             <div className={`hidden sm:block w-px h-4 ${getBarDividerColor(isExtreme, isDark)}`} />
@@ -643,22 +625,16 @@ export default function Game() {
             className={isRunning ? timerIconColor : getTimerPauseIconColor(isExtreme, isDark)}
           />
           <span
-            className={`font-mono text-xl sm:text-2xl font-bold tracking-widest transition-colors ${
-              isRunning
-                ? getTimerRunColor(isExtreme, isDark)
-                : getTimerPauseColor(isExtreme, isDark)
-            }`}
+            className={`font-mono text-xl sm:text-2xl font-bold tracking-widest transition-colors ${isRunning ? getTimerRunColor(isExtreme, isDark) : getTimerPauseColor(isExtreme, isDark)}`}
           >
             {formatted}
           </span>
         </div>
-
         {soloWaitingFirstClick && (
           <span className={`text-[10px] sm:text-[11px] mt-1 ${getWaitingColor(isExtreme, isDark)}`}>
             ⏸️ Clique no tabuleiro para iniciar o timer
           </span>
         )}
-
         {waitingForPlayer && (
           <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
             <span className={`text-[10px] sm:text-[11px] ${getWaitingColor(isExtreme, isDark)}`}>
@@ -682,7 +658,7 @@ export default function Game() {
           current={roomState.current}
           solution={roomState.solution}
           selected={selected}
-          opponentSelected={isSolo ? null : opponentSelected}
+          opponentSelected={isSoloLike ? null : opponentSelected}
           notes={roomState.notes}
           isNoteMode={isNoteMode}
           isExtreme={isExtreme}
@@ -746,23 +722,19 @@ export default function Game() {
             🧪 Completar
           </button>
         )}
-
         {!isSpectator && (
           <button
             type="button"
             onClick={() => setIsNoteMode((prev) => !prev)}
-            className={`px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${
-              isNoteMode ? noteActiveStyle : getNoteInactiveStyle(isExtreme, isDark)
-            }`}
+            className={`px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${isNoteMode ? noteActiveStyle : getNoteInactiveStyle(isExtreme, isDark)}`}
           >
             ✏️ {isNoteMode ? 'Lápis ativado' : 'Lápis'}{' '}
             <span className="text-xs opacity-70 hidden sm:inline">(Tab)</span>
           </button>
         )}
-
         <button
           type="button"
-          onClick={handleLeave}
+          onClick={resetAndLeave}
           className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm transition-colors ${leaveStyle}`}
         >
           Sair
@@ -782,11 +754,11 @@ export default function Game() {
           timeSeconds={seconds}
           difficulty={roomState.difficulty}
           creatorName={creatorName}
-          joinerName={isSolo ? '' : joinerDisplayName}
+          joinerName={isSoloLike ? '' : joinerDisplayName}
           errorCount={errorCount}
           isCreator={player === 'creator'}
-          mode={isSolo ? 'solo' : 'duo'}
-          onLeave={handleLeave}
+          mode={leaderboardMode}
+          onLeave={resetAndLeave}
           onShowLeaderboard={() => {
             setShowVictory(false);
             setShowLeaderboard(true);
@@ -797,8 +769,8 @@ export default function Game() {
       {showLeaderboard && (
         <LeaderboardModal
           initialDifficulty={roomState.difficulty}
-          initialMode={isSolo ? 'solo' : 'duo'}
-          onClose={handleLeave}
+          initialMode={leaderboardMode}
+          onClose={resetAndLeave}
           onBack={() => {
             setShowLeaderboard(false);
             setShowVictory(true);

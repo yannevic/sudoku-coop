@@ -1,6 +1,6 @@
 import supabase from './supabase';
 
-export type LeaderboardMode = 'solo' | 'duo';
+export type LeaderboardMode = 'solo' | 'duo' | 'daily';
 
 export interface LeaderboardEntry {
   id: string;
@@ -9,7 +9,16 @@ export interface LeaderboardEntry {
   error_count: number;
   difficulty: string;
   mode: LeaderboardMode;
+  date: string | null;
   created_at: string;
+}
+
+export function getTodayDateString(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = (d.getMonth() + 1).toString().padStart(2, '0');
+  const day = d.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export async function saveToLeaderboard(
@@ -17,21 +26,30 @@ export async function saveToLeaderboard(
   timeSeconds: number,
   difficulty: string,
   errorCount: number,
-  mode: LeaderboardMode
+  mode: LeaderboardMode,
+  date?: string
 ): Promise<void> {
   if (!import.meta.env.PROD) return;
-
   const { error } = await supabase.from('leaderboard').insert({
     duo_name: duoName,
     time_seconds: timeSeconds,
     difficulty,
     error_count: errorCount,
     mode,
+    date: date ?? null,
   });
   // eslint-disable-next-line no-console
   if (error) console.error('[leaderboard] erro ao salvar:', error);
   // eslint-disable-next-line no-console
-  else console.log('[leaderboard] salvo:', { duoName, timeSeconds, difficulty, errorCount, mode });
+  else
+    console.log('[leaderboard] salvo:', {
+      duoName,
+      timeSeconds,
+      difficulty,
+      errorCount,
+      mode,
+      date,
+    });
 }
 
 export async function fetchLeaderboard(
@@ -44,12 +62,20 @@ export async function fetchLeaderboard(
     .eq('mode', mode)
     .order('time_seconds', { ascending: true })
     .limit(7);
-
-  if (difficulty) {
-    query = query.eq('difficulty', difficulty);
-  }
-
+  if (difficulty) query = query.eq('difficulty', difficulty);
   const { data } = await query;
+  return data ?? [];
+}
+
+export async function fetchDailyLeaderboard(): Promise<LeaderboardEntry[]> {
+  const today = getTodayDateString();
+  const { data } = await supabase
+    .from('leaderboard')
+    .select('*')
+    .eq('mode', 'daily')
+    .eq('date', today)
+    .order('time_seconds', { ascending: true })
+    .limit(10);
   return data ?? [];
 }
 

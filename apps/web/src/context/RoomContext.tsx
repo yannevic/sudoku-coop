@@ -8,10 +8,18 @@ import {
   ReactNode,
 } from 'react';
 import supabase from '../utils/supabase';
-import { generatePuzzle, createEmptyNotes, createEmptyCurrentBoard } from '../utils/sudoku';
+import {
+  generatePuzzle,
+  generateDailyPuzzle,
+  getDailySeed,
+  getDailyDifficulty,
+  createEmptyNotes,
+  createEmptyCurrentBoard,
+} from '../utils/sudoku';
+import { getTodayDateString } from '../utils/leaderboard';
 import type { Board, Difficulty, Notes, Player, CurrentBoard } from '../utils/sudoku';
 
-export type GameMode = 'solo' | 'duo' | 'spectator';
+export type GameMode = 'solo' | 'duo' | 'spectator' | 'daily';
 
 interface RoomState {
   puzzle: Board;
@@ -31,9 +39,11 @@ interface RoomContextType {
   error: string | null;
   isDark: boolean;
   gameMode: GameMode;
+  dailyDate: string;
   toggleDark: () => void;
   setGameMode: (mode: GameMode) => void;
   createRoom: (difficulty: Difficulty) => Promise<void>;
+  createDailyRoom: () => Promise<void>;
   joinRoom: (code: string) => Promise<void>;
   updateRoom: (current: CurrentBoard, notes: Notes) => Promise<void>;
   setRoomState: (state: RoomState) => void;
@@ -58,25 +68,20 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [isDark, setIsDark] = useState(false);
   const [gameMode, setGameMode] = useState<GameMode>('duo');
 
-  const toggleDark = useCallback(() => {
-    setIsDark((prev) => !prev);
-  }, []);
+  const toggleDark = useCallback(() => setIsDark((prev) => !prev), []);
 
   const createRoom = useCallback(
     async (difficulty: Difficulty) => {
       setLoading(true);
       setError(null);
-
       await new Promise((resolve) => {
         setTimeout(resolve, 0);
       });
-
       const { puzzle, solution } = generatePuzzle(difficulty);
       const current = createEmptyCurrentBoard();
       const notes = createEmptyNotes();
       const id = generateRoomCode();
       const roomMode = gameMode === 'solo' ? 'solo' : 'duo';
-
       const { error: err } = await supabase.from('rooms').insert({
         id,
         puzzle,
@@ -88,13 +93,11 @@ export function RoomProvider({ children }: { children: ReactNode }) {
         finished: false,
         mode: roomMode,
       });
-
       if (err) {
         setError('Erro ao criar sala. Tente novamente.');
         setLoading(false);
         return;
       }
-
       setRoomId(id);
       setRoomState({
         puzzle,
@@ -110,35 +113,70 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     [gameMode]
   );
 
+  const createDailyRoom = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    const seed = getDailySeed();
+    const difficulty = getDailyDifficulty();
+    const { puzzle, solution } = generateDailyPuzzle(seed, difficulty);
+    const current = createEmptyCurrentBoard();
+    const notes = createEmptyNotes();
+    const id = generateRoomCode();
+    const { error: err } = await supabase.from('rooms').insert({
+      id,
+      puzzle,
+      solution,
+      current,
+      notes: notes.map((row) => row.map((cell) => Array.from(cell))),
+      difficulty,
+      player_count: 1,
+      finished: false,
+      mode: 'daily',
+    });
+    if (err) {
+      setError('Erro ao criar sala. Tente novamente.');
+      setLoading(false);
+      return;
+    }
+    setRoomId(id);
+    setRoomState({
+      puzzle,
+      solution,
+      current,
+      notes,
+      difficulty,
+      player: 'creator',
+      playerCount: 1,
+    });
+    setLoading(false);
+  }, []);
+
   const joinRoom = useCallback(
     async (code: string) => {
       setLoading(true);
       setError(null);
-
       const { data, error: err } = await supabase
         .from('rooms')
         .select('*')
         .eq('id', code.toUpperCase())
         .single();
-
       if (err || !data) {
         setError('Sala não encontrada. Verifique o código.');
         setLoading(false);
         return;
       }
-
       if (data.finished) {
         setError('Esta sala já terminou. Crie uma nova!');
         setLoading(false);
         return;
       }
-
       const notes: Notes = (data.notes as number[][][]).map((row) =>
         row.map((cell) => new Set(cell))
       );
-
       if (gameMode === 'spectator') {
-        // Espectador pode entrar em qualquer sala (solo ou duo) que não terminou
         setRoomId(data.id);
         setRoomState({
           puzzle: data.puzzle,
@@ -152,22 +190,17 @@ export function RoomProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-
-      // Jogador dupla não pode entrar em sala solo
-      if (data.mode === 'solo') {
+      if (data.mode === 'solo' || data.mode === 'daily') {
         setError('Esta é uma sala solo. Entre como espectador para assistir.');
         setLoading(false);
         return;
       }
-
       if (data.player_count >= 2) {
         setError('Esta sala já está cheia. Crie uma nova!');
         setLoading(false);
         return;
       }
-
       await supabase.from('rooms').update({ player_count: 2 }).eq('id', code.toUpperCase());
-
       setRoomId(data.id);
       setRoomState({
         puzzle: data.puzzle,
@@ -188,10 +221,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       if (!roomId) return;
       await supabase
         .from('rooms')
-        .update({
-          current,
-          notes: notes.map((row) => row.map((cell) => Array.from(cell))),
-        })
+        .update({ current, notes: notes.map((row) => row.map((cell) => Array.from(cell))) })
         .eq('id', roomId);
     },
     [roomId]
@@ -217,7 +247,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!roomId) return undefined;
-
     const channel = supabase
       .channel(`room-${roomId}`)
       .on(
@@ -240,11 +269,12 @@ export function RoomProvider({ children }: { children: ReactNode }) {
         }
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
   }, [roomId]);
+
+  const dailyDate = getTodayDateString();
 
   const value = useMemo(
     () => ({
@@ -255,9 +285,11 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       error,
       isDark,
       gameMode,
+      dailyDate,
       toggleDark,
       setGameMode,
       createRoom,
+      createDailyRoom,
       joinRoom,
       updateRoom,
       setRoomState,
@@ -274,9 +306,10 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       error,
       isDark,
       gameMode,
+      dailyDate,
       toggleDark,
-      setGameMode,
       createRoom,
+      createDailyRoom,
       joinRoom,
       updateRoom,
       leaveRoom,

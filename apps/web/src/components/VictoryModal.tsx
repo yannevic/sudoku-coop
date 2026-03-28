@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Trophy } from 'lucide-react';
-import { saveToLeaderboard, formatDuoName, formatTime } from '../utils/leaderboard';
+import {
+  saveToLeaderboard,
+  formatDuoName,
+  formatTime,
+  getTodayDateString,
+} from '../utils/leaderboard';
 import type { LeaderboardMode } from '../utils/leaderboard';
 import type { Difficulty } from '../utils/sudoku';
 
@@ -16,6 +21,18 @@ interface VictoryModalProps {
   onShowLeaderboard: () => void;
 }
 
+function getSubtitle(mode: LeaderboardMode): string {
+  if (mode === 'daily') return 'Daily concluído! ☀️';
+  if (mode === 'solo') return 'Você arrasou! 🌸';
+  return 'Parabéns à dupla incrível 🌸';
+}
+
+function getLabel(mode: LeaderboardMode): string {
+  if (mode === 'daily') return 'Daily';
+  if (mode === 'solo') return 'Jogador';
+  return 'Dupla';
+}
+
 export default function VictoryModal({
   timeSeconds,
   errorCount,
@@ -28,8 +45,9 @@ export default function VictoryModal({
   onShowLeaderboard,
 }: VictoryModalProps) {
   const savedRef = useRef(false);
+  const isSoloLike = mode === 'solo' || mode === 'daily';
   const duoName = useRef(
-    mode === 'solo'
+    isSoloLike
       ? formatDuoName(creatorName, '', new Date())
       : formatDuoName(creatorName, joinerName, new Date())
   ).current;
@@ -37,7 +55,8 @@ export default function VictoryModal({
   useEffect(() => {
     if (!isCreator || savedRef.current) return;
     savedRef.current = true;
-    saveToLeaderboard(duoName, timeSeconds, difficulty, errorCount, mode);
+    const date = mode === 'daily' ? getTodayDateString() : undefined;
+    saveToLeaderboard(duoName, timeSeconds, difficulty, errorCount, mode, date);
   }, [duoName, timeSeconds, difficulty, isCreator, errorCount, mode]);
 
   const difficultyLabel: Record<Difficulty, string> = {
@@ -47,18 +66,9 @@ export default function VictoryModal({
     extreme: '💀 Extremo',
   };
 
-  const isSolo = mode === 'solo';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm overflow-hidden">
-      <style>{`
-        @keyframes pop-in {
-          0% { transform: scale(0.7); opacity: 0; }
-          70% { transform: scale(1.05); }
-          100% { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
-
+      <style>{`@keyframes pop-in { 0% { transform: scale(0.7); opacity: 0; } 70% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }`}</style>
       <div
         style={{ animation: 'pop-in 0.4s ease forwards' }}
         className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
@@ -66,19 +76,15 @@ export default function VictoryModal({
         <div className="bg-[#9b5fa5] px-6 py-6 flex flex-col items-center gap-2">
           <Trophy size={36} className="text-yellow-300" />
           <h2 className="text-white font-bold text-2xl">Puzzle resolvido!</h2>
-          <p className="text-[#e9c4f5] text-sm text-center">
-            {isSolo ? 'Você arrasou! 🌸' : 'Parabéns à dupla incrível 🌸'}
-          </p>
+          <p className="text-[#e9c4f5] text-sm text-center">{getSubtitle(mode)}</p>
         </div>
-
         <div className="px-6 py-6 flex flex-col gap-4">
           <div className="bg-[#fdf6fb] rounded-2xl px-4 py-3 text-center">
             <p className="text-[10px] text-[#c9a0d0] uppercase font-semibold tracking-widest mb-1">
-              {isSolo ? 'Jogador' : 'Dupla'}
+              {getLabel(mode)}
             </p>
             <p className="text-[#7a4a84] font-bold text-base leading-snug">{duoName}</p>
           </div>
-
           <div className="flex gap-3">
             <div className="flex-1 bg-[#fdf6fb] rounded-2xl px-4 py-3 text-center">
               <p className="text-[10px] text-[#c9a0d0] uppercase font-semibold tracking-widest mb-1">
@@ -105,7 +111,6 @@ export default function VictoryModal({
               </p>
             </div>
           </div>
-
           <button
             type="button"
             onClick={onShowLeaderboard}
@@ -114,7 +119,6 @@ export default function VictoryModal({
             <Trophy size={16} />
             Ver ranking
           </button>
-
           <button
             type="button"
             onClick={onLeave}
